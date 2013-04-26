@@ -9,3 +9,4 @@ share
 .settings
 .project
 .pydevproject
+*.egg-info
