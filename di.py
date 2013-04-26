@@ -86,7 +86,8 @@ class DIContainer(object):
         """
         Creates a new DI Container.
 
-        :param settings: The dictionary, containing the container-configuration.
+        :param settings: The dictionary, containing the container-
+                         configuration.
         """
         self.settings = settings
         self.names = settings.keys()
@@ -102,12 +103,26 @@ class DIContainer(object):
     def _resolve_type(self, python_name):
         """
         Resolves a type.
+
+        :param python_name: the full name of the type to reslove.
+        :returns: type
         """
         type_path, type_name = python_name.rsplit('.', 1)
         mod = __import__(type_path)
         return getattr(mod, type_name)
 
     def _resolve_value(self, value_conf):
+        """
+        resolves a value from a string.
+
+        depeding on then value prefix some furthur action will follow:
+        - rel: relates to anoter type of in this container.
+        - mod: imports and return a module/package with that name.
+        - ref: load a variable off a module/package.
+
+        :param value_conf: the value to pass or resolve.
+        :returns: object
+        """
         value = value_conf
         if isinstance(value_conf, str):
             # keyword: rel - relation to another di object
@@ -127,6 +142,12 @@ class DIContainer(object):
         return value
 
     def _resolve_args(self, conf):
+        """
+        resolves the arguments off the container configuration.
+
+        :param conf: value configuration.
+        :returns: (), {}
+        """
         args = []
         kwargs = {}
         if isinstance(conf, dict):
@@ -145,7 +166,13 @@ class DIContainer(object):
         return args, kwargs
 
     def register(self, name, settings):
-        pass
+        """
+        register a new configuration at runtime.
+
+        :param name: the name for the new configuration.
+        :param settings: the sessings dictionary for the new type.
+        """
+        raise NotImplementedError()
 
     def resolve(self, name):
         """
@@ -210,6 +237,11 @@ class DIContainer(object):
             self.singletons = {}
 
     def __dir__(self):
+        """
+        override the base dir and extend with the configuration names.
+
+        :returns: list of strings
+        """
         d = []
         d.extend(dir(type(self)))
         d.extend(self.__dict__.keys())
@@ -217,6 +249,13 @@ class DIContainer(object):
         return list(set(d))
 
     def __getattr__(self, name):
+        """
+        resolves the given name in this container.
+
+        :param name: the key to resolve.
+        :returns: object
+        """
         if not name in self.names:
-            raise AttributeError('no component named "%s". please adjust in settings.' % name)
+            raise AttributeError(
+                'no component named "%s". please adjust in settings.' % name)
         return self.resolve(name)
