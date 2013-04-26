@@ -1,0 +1,11 @@
+env
+bin
+lib
+local
+share
+*.pyc
+*.komodoproject
+*~
+.settings
+.project
+.pydevproject
