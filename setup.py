@@ -1,11 +1,12 @@
 # coding: utf-8
 
+import di
 from setuptools import setup
 
 
 setup_args = {
     'name': 'python-simple-di',
-    'version': '0.1.0',
+    'version': di.__version__,
     'description': 'A simple dependency injection container.',
     'long_description': open('README.rst').read(),
     'url': 'http://bitbucket.org/jblawatt/python-simple-di',

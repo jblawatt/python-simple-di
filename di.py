@@ -2,6 +2,12 @@
 
 import logging
 
+__major__ = 0
+__minor__ = 1
+__bugfix__ = 0
+
+__version__ = '%s.%s.%s' % (__major__, __minor__, __bugfix__)
+
 
 _logger = logging.getLogger(__name__)
 
