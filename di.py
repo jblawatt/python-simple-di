@@ -172,7 +172,9 @@ class DIContainer(object):
         :param name: the name for the new configuration.
         :param settings: the sessings dictionary for the new type.
         """
-        raise NotImplementedError()
+        if name in self.settings:
+            raise KeyError('there is already a configuration with this name.')
+        self.settings[name] = settings
 
     def resolve(self, name):
         """
@@ -255,7 +257,7 @@ class DIContainer(object):
         :param name: the key to resolve.
         :returns: object
         """
-        if not name in self.names:
+        if not name in self.settings:
             raise AttributeError(
                 'no component named "%s". please adjust in settings.' % name)
         return self.resolve(name)
