@@ -98,6 +98,17 @@ class DIContainerTestCase(TestCase):
         self.assertIn('jens_nl', self.manager.singletons)
         self.assertNotIn('jens', self.manager.singletons)
 
+    def test__register(self):
+        self.manager.register('henrik', {'type': 'test.TestPerson', 'singleton': True, 'args': {'': ['Henrik', 'Blawatt', 24]}})
+
+        henrik1 = self.manager.henrik
+        henrik2 = self.manager.resolve('henrik')
+
+        self.assertEqual(henrik1, henrik2)
+        self.assertEqual(henrik1.first_name, 'Henrik')
+        self.assertEqual(henrik1.last_name, 'Blawatt')
+        self.assertEqual(henrik1.age, 24)
+
 
 if __name__ == '__main__':
     unittest.main()
