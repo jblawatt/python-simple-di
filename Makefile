@@ -8,9 +8,12 @@ env:
 test: env
 	. env/bin/activate; python -m unittest test
 
+clean:
+	rm -rf env
+
 clean-py:
 	find -name "*.pyc" -delete
 
 check: env
-	pep8 di.py
+	env/bin/pep8 di.py
 

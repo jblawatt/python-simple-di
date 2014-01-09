@@ -1,12 +1,17 @@
 # coding: utf-8
 
 import logging
+from importlib import import_module
 
-__major__ = 0
-__minor__ = 1
-__bugfix__ = 0
+__major__ = 1
+__minor__ = 0
+__bugfix__ = 3
 
 __version__ = '%s.%s.%s' % (__major__, __minor__, __bugfix__)
+
+__author__ = 'Jens Blawatt'
+__author_email__ = 'jblawatt@googlemail.com'
+__author_website__ = 'http://www.blawatt.de/'
 
 
 _logger = logging.getLogger(__name__)
@@ -71,7 +76,7 @@ class DIContainer(object):
         what exactly shout be injected.
 
         - mod:
-            Resolves the following name, trys to __import__ it and passes
+            Resolves the following name, trys to import_module it and passes
             the result as argument.
         - rel:
             Resolves an instance with the following name an passes it as
@@ -108,7 +113,7 @@ class DIContainer(object):
         :returns: type
         """
         type_path, type_name = python_name.rsplit('.', 1)
-        mod = __import__(type_path)
+        mod = import_module(type_path)
         return getattr(mod, type_name)
 
     def _resolve_value(self, value_conf):
@@ -127,17 +132,17 @@ class DIContainer(object):
         if isinstance(value_conf, str):
             # keyword: rel - relation to another di object
             if value_conf.startswith('rel:'):
-                key, name = value_conf.split(':', 1)
+                key, name = value_conf.split(':', 1) # @UnusedVariable
                 return self.resolve(name)
             # keyword: mod - relation to an module import follows
             if value_conf.startswith('mod:'):
-                key, name = value_conf.split(':', 1)
-                return __import__(name)
+                key, name = value_conf.split(':', 1) # @UnusedVariable
+                return import_module(name)
             # reference to an type / variable in an module
             if value_conf.startswith('ref:'):
-                key, name = value_conf.split(':', 1)
+                key, name = value_conf.split(':', 1) # @UnusedVariable
                 mod_name, var_name = name.rsplit('.', 1)
-                mod = __import__(mod_name)
+                mod = import_module(mod_name)
                 return getattr(mod, var_name)
         return value
 
@@ -203,6 +208,16 @@ class DIContainer(object):
             self.singletons[name] = obj
 
         return obj
+
+    def resolve_type(self, name):
+        """
+        Resolves a type for the given name in the configuration.
+
+        :param name: name of an object in the configuration.
+        :returns: type
+        """
+        conf = self.settings[name]
+        return self._resolve_type(conf['type'])
 
     def build_up(self, name, instance, **overrides):
         """
