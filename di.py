@@ -1,11 +1,13 @@
 # coding: utf-8
 
+import sys
 import logging
+
 from importlib import import_module
 
 __major__ = 1
-__minor__ = 0
-__bugfix__ = 3
+__minor__ = 2
+__bugfix__ = 0
 
 __version__ = '%s.%s.%s' % (__major__, __minor__, __bugfix__)
 
@@ -112,6 +114,11 @@ class DIContainer(object):
         :param python_name: the full name of the type to reslove.
         :returns: type
         """
+        if ':' in python_name:
+            path, python_name = python_name.split(':')
+            if not path in sys.path:
+                sys.path.append(path)
+
         type_path, type_name = python_name.rsplit('.', 1)
         mod = import_module(type_path)
         return getattr(mod, type_name)
@@ -170,6 +177,13 @@ class DIContainer(object):
                 args.append(self._resolve_value(value_conf))
         return args, kwargs
 
+    def _check_type(self, conf_name, type_, expected):
+        if not issubclass(type_, expected):
+            raise TypeError(
+                '%s is not a subclass of %s. This violates the configuration for key %s'
+                % (type_, expected, conf_name)
+            )
+
     def register(self, name, settings):
         """
         register a new configuration at runtime.
@@ -198,6 +212,13 @@ class DIContainer(object):
         conf = self.settings[name]
         singleton = conf.get('singleton', False)
         type_ = self._resolve_type(conf['type'])
+
+        # assert weather the type implements the
+        # configures basetype.
+        assert_type = conf.get('assert_type', None)
+        if assert_type:
+            expected_type = self._resolve_type(assert_type)
+            self._check_type(name, type_, expected_type)
 
         # resolve the arguments to pass into the constructor
         _args, _kwargs = self._resolve_args(conf.get('args', []))

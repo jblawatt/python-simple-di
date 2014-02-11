@@ -1,9 +1,29 @@
 # coding: utf-8
 
 from __future__ import absolute_import
-from di import DIContainer
+
+import os
+import sys
+import tempfile
 import unittest
 from unittest import TestCase
+
+from di import DIContainer
+
+
+class PersonBase(object):
+
+    first_name = None
+    last_name = None
+    age = None
+
+
+class TestPersonWithBase(PersonBase):
+
+    def __init__(self, first_name, last_name, age):
+        self.first_name = first_name
+        self.last_name = last_name
+        self.age = age
 
 
 class TestPerson(object):
@@ -12,6 +32,11 @@ class TestPerson(object):
         self.first_name = first_name
         self.last_name = last_name
         self.age = age
+
+
+temp_file = tempfile.mkdtemp()
+temp_path, temp_module = temp_file.rsplit(os.sep, 1)
+temp_file = temp_file + '.py'
 
 
 TEST_DI_SETTINGS = {
@@ -47,6 +72,23 @@ TEST_DI_SETTINGS = {
         'lazy': False,
         'args': {'': ['Jens', 'Blawatt', 27]},
     },
+    'jens_autopath': {
+        'type': temp_path + ':' + temp_module + '.AutoPathPerson',
+        'properties': {
+            'first_name': 'Jens',
+            'last_name': 'Blawatt'
+        }
+    },
+    'jens_assert_base': {
+        'type': 'test.TestPersonWithBase',
+        'assert_type': 'test.PersonBase',
+        'args': {'': ['Jens', 'Blawatt', 27]},
+    },
+    'jens_assert_no_base': {
+        'type': 'test.TestPerson',
+        'assert_type': 'test.PersonBase',
+        'args': {'': ['Jens', 'Blawatt', 27]},
+    }
 }
 
 
@@ -109,6 +151,37 @@ class DIContainerTestCase(TestCase):
         self.assertEqual(henrik1.last_name, 'Blawatt')
         self.assertEqual(henrik1.age, 24)
 
+    def test_autopath(self):
+
+        def create_tempmodule():
+            with open(temp_file, 'w') as f:
+                f.write(
+                    "class AutoPathPerson(object):\n"
+                    "    pass\n"
+                )
+
+        create_tempmodule()
+
+        jens_autopath = self.manager.jens_autopath
+        self.assertIsNotNone(jens_autopath)
+        self.assertEqual(jens_autopath.first_name, 'Jens')
+        self.assertEqual(jens_autopath.last_name, 'Blawatt')
+        self.assertIn(temp_path, sys.path)
+
+    def test_assertbasetype(self):
+
+        def will_raise():
+            o = self.manager.jens_assert_no_base
+
+        def will_not_raise():
+            o = self.manager.jens_assert_base
+
+        self.assertRaises(TypeError, will_raise)
+
+        try:
+            will_not_raise()
+        except Exception as e:
+            self.fail('raised unexpected error: %s' % e)
 
 if __name__ == '__main__':
     unittest.main()
