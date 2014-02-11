@@ -199,6 +199,9 @@ class DIContainer(object):
                 % (type_, expected, conf_name)
             )
 
+    # ---------------------------
+    # public methods
+    # ---------------------------
     def register(self, name, settings):
         """
         register a new configuration at runtime.
