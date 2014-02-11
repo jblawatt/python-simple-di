@@ -178,6 +178,17 @@ class DIContainer(object):
         return args, kwargs
 
     def _check_type(self, conf_name, type_, expected):
+        """
+        Check if `type_` is a subclass of `expected`.
+
+        :param conf_name: Name of the Configuration name for this check.
+        :type conf_name: str
+        :param type_: Type that must implement the expected type.
+        :type type_: type
+        :param expected: Type that must be implemented by `type_`.
+        :type expected: type
+        :raises: TypeError
+        """
         if not issubclass(type_, expected):
             raise TypeError(
                 '%s is not a subclass of %s. This violates the configuration for key %s'
