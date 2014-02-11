@@ -15,6 +15,6 @@ clean-py:
 	find -name "*.pyc" -delete
 
 check: env
-	. env/bin/activate; pep8 di.py
-	. env/bin/activate; pyflakes di.py
+	. env/bin/activate; pep8 src/di.py
+	. env/bin/activate; pyflakes src/di.py
 

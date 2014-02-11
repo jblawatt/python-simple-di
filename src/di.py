@@ -11,6 +11,7 @@ __bugfix__ = 0
 
 __version__ = '%s.%s.%s' % (__major__, __minor__, __bugfix__)
 
+__website__ = 'http://bitbucket.org/jblawatt/python-simple-di/'
 __author__ = 'Jens Blawatt'
 __author_email__ = 'jblawatt@googlemail.com'
 __author_website__ = 'http://www.blawatt.de/'
