@@ -16,7 +16,8 @@ setup_args = {
     'author': di.__author__,
     'author_email': di.__author_email__,
     'url': di.__website__,
-    'py_modules': ['src/di'],
+    'py_modules': ['di'],
+    'licence': 'MIT'
 }
 
 
