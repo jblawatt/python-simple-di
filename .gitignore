@@ -10,3 +10,4 @@ share
 .project
 .pydevproject
 *.egg-info
+docs/build
