@@ -11,3 +11,4 @@ share
 .pydevproject
 *.egg-info
 docs/build
+htmlcov
