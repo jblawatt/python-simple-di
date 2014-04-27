@@ -143,15 +143,15 @@ class DIContainer(object):
         if isinstance(value_conf, str):
             # keyword: rel - relation to another di object
             if value_conf.startswith('rel:'):
-                key, name = value_conf.split(':', 1) # @UnusedVariable
+                key, name = value_conf.split(':', 1)  # @UnusedVariable
                 return self.resolve(name)
             # keyword: mod - relation to an module import follows
             if value_conf.startswith('mod:'):
-                key, name = value_conf.split(':', 1) # @UnusedVariable
+                key, name = value_conf.split(':', 1)  # @UnusedVariable
                 return import_module(name)
             # reference to an type / variable in an module
             if value_conf.startswith('ref:'):
-                key, name = value_conf.split(':', 1) # @UnusedVariable
+                key, name = value_conf.split(':', 1)  # @UnusedVariable
                 mod_name, var_name = name.rsplit('.', 1)
                 mod = import_module(mod_name)
                 return getattr(mod, var_name)
@@ -195,7 +195,8 @@ class DIContainer(object):
         """
         if not issubclass(type_, expected):
             raise TypeError(
-                '%s is not a subclass of %s. This violates the configuration for key %s'
+                '%s is not a subclass of %s. This violates the'
+                'configuration for key %s'
                 % (type_, expected, conf_name)
             )
 
@@ -315,3 +316,8 @@ class DIContainer(object):
             raise AttributeError(
                 'no component named "%s". please adjust in settings.' % name)
         return self.resolve(name)
+
+
+def inject(fnc):
+    def wrapper(*args, **kwargs):
+        pass
