@@ -4,6 +4,7 @@ bin
 lib
 local
 share
+build
 *.pyc
 *.komodoproject
 *~
