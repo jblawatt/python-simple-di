@@ -99,6 +99,7 @@ class DIContainer(object):
 
         :param settings: The dictionary, containing the container-
                          configuration.
+        :type settings: dict
         """
         self.settings = settings
         self.names = settings.keys()
@@ -113,11 +114,21 @@ class DIContainer(object):
     # ---------------------------
     def _resolve_type(self, python_name):
         """
-        Resolves a type.
+        Resolves a type. The Parameter :code:`python_name` is the
+        types full path python name.
+        * de.blawatt.test.Person
 
-        :param python_name: the full name of the type to reslove.
+        The types module can dynamicly be added to the path this way:
+        * /tmp/dir_with_module/:module.Person
+
+        :param python_name: The full name of the type to reslove.
+        :type python_name: str
+
         :returns: type
         """
+
+        # check if python_name contains a : to split path
+        # and python_name
         if ':' in python_name:
             path, python_name = python_name.split(':')
             if not path in sys.path:
@@ -132,26 +143,28 @@ class DIContainer(object):
         resolves a value from a string.
 
         depeding on then value prefix some furthur action will follow:
-        - rel: relates to anoter type of in this container.
-        - mod: imports and return a module/package with that name.
-        - ref: load a variable off a module/package.
+        * ''rel'': relates to anoter type of in this container.
+        * ''mod'': imports and return a module/package with that name.
+        * ''ref'': load a variable off a module/package.
 
         :param value_conf: the value to pass or resolve.
+        :type value_conf: dict
+
         :returns: object
         """
         value = value_conf
         if isinstance(value_conf, str):
             # keyword: rel - relation to another di object
             if value_conf.startswith('rel:'):
-                key, name = value_conf.split(':', 1) # @UnusedVariable
+                key, name = value_conf.split(':', 1)  # @UnusedVariable
                 return self.resolve(name)
             # keyword: mod - relation to an module import follows
             if value_conf.startswith('mod:'):
-                key, name = value_conf.split(':', 1) # @UnusedVariable
+                key, name = value_conf.split(':', 1)  # @UnusedVariable
                 return import_module(name)
             # reference to an type / variable in an module
             if value_conf.startswith('ref:'):
-                key, name = value_conf.split(':', 1) # @UnusedVariable
+                key, name = value_conf.split(':', 1)  # @UnusedVariable
                 mod_name, var_name = name.rsplit('.', 1)
                 mod = import_module(mod_name)
                 return getattr(mod, var_name)
@@ -162,6 +175,8 @@ class DIContainer(object):
         resolves the arguments off the container configuration.
 
         :param conf: value configuration.
+        :type conf: dict
+
         :returns: (), {}
         """
         args = []
@@ -191,6 +206,7 @@ class DIContainer(object):
         :type type_: type
         :param expected: Type that must be implemented by `type_`.
         :type expected: type
+
         :raises: TypeError
         """
         if not issubclass(type_, expected):
@@ -207,7 +223,9 @@ class DIContainer(object):
         register a new configuration at runtime.
 
         :param name: the name for the new configuration.
+        :type name: str
         :param settings: the sessings dictionary for the new type.
+        :type settings: dict
         """
         if name in self.settings:
             raise KeyError('there is already a configuration with this name.')
@@ -218,6 +236,8 @@ class DIContainer(object):
         Resolves an object by its name assigned in the configuration.
 
         :param name: object's name in the configuration.
+        :type name: str
+
         :returns: object
         """
 
@@ -255,6 +275,8 @@ class DIContainer(object):
         Resolves a type for the given name in the configuration.
 
         :param name: name of an object in the configuration.
+        :type name: str
+
         :returns: type
         """
         conf = self.settings[name]
@@ -266,7 +288,10 @@ class DIContainer(object):
         into an existing object.
 
         :param name: name of the object definition in the container config.
+        :type name: str
         :param instance: the instance to buildup
+        :type instance: object
+
         :param **overrides: sets/overrides the information of the config
                             with the given information.
 
@@ -286,11 +311,18 @@ class DIContainer(object):
 
         :param name: the name of the singleton instance that shoud be
                      destroied.
+        :type name: str
         """
         if name:
             del self.singletons[name]
         else:
             self.singletons = {}
+
+    def create_child_container(self, settings):
+        # TODO: Copy singleton reference into the child container
+        orig_settings = copy(self.settings)
+        orig_settings.update(settings)
+        return type(self)(orig_settings)
 
     def __dir__(self):
         """
@@ -309,6 +341,8 @@ class DIContainer(object):
         resolves the given name in this container.
 
         :param name: the key to resolve.
+        :type name: str
+
         :returns: object
         """
         if not name in self.settings:
