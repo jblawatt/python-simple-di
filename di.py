@@ -8,7 +8,7 @@ from copy import copy
 from importlib import import_module
 
 __major__ = 1
-__minor__ = 2
+__minor__ = 3
 __bugfix__ = 0
 
 __version__ = '%s.%s.%s' % (__major__, __minor__, __bugfix__)
