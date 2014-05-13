@@ -4,6 +4,7 @@ from __future__ import absolute_import
 
 import os
 import sys
+import mock
 import tempfile
 import unittest
 from unittest import TestCase
@@ -237,6 +238,25 @@ class DIContainerTestCase(TestCase):
         self.manager.clear()
         self.assertNotIn('foo', self.manager.singletons)
         self.assertNotIn('bar', self.manager.singletons)
+
+    def test_events(self):
+        manager = DIContainer(TEST_DI_SETTINGS, event_dispatcher=mock.MagicMock)
+        for name in ('jens',):
+            manager.resolve(name)
+
+        manager.resolve_type('jessica')
+        manager.clear()
+        manager.register('henrik_2', {
+            'type': 'test.TestPerson',
+            'singleton': True,
+            'args': {'': ['Henrik', 'Blawatt', 24]}
+        })
+
+        for method in ('initialized', 'before_register', 'after_register',
+                       'after_resolve', 'before_resolve', 'before_build_up',
+                       'after_build_up', 'before_resolve_type', 'after_resolve_type',
+                       'after_clear',):
+            self.assertTrue(getattr(manager.event_dispatcher, method).called, 'called method %s.' % method)
 
 if __name__ == '__main__':
     unittest.main()

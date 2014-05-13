@@ -1,10 +1,9 @@
 # coding: utf-8
 
-"""
-"""
-
 import sys
 import logging
+
+from copy import copy
 
 from importlib import import_module
 
@@ -21,6 +20,48 @@ __author_website__ = 'http://www.blawatt.de/'
 
 
 _logger = logging.getLogger(__name__)
+
+
+__all__ = [
+    'DIEventDispatcher', 'DIContainer', 'attr', 'module', 'mod', 'factory',
+    'fac', 'relation', 'rel', 'reference', 'ref',
+]
+
+
+class DIEventDispatcher(object):
+
+    def __init__(self, container, *args, **kwargs):
+        self.container = container
+
+    def initialized(self, *args, **kwargs):
+        pass
+
+    def before_register(self, name, settings, *args, **kwargs):
+        pass
+
+    def after_register(self, name, settings, *args, **kwargs):
+        pass
+
+    def after_resolve(self, name, instance, *args, **kwargs):
+        pass
+
+    def before_resolve(self, name, *args, **kwargs):
+        pass
+
+    def before_build_up(self, name, instance, overrides, *args, **kwargs):
+        pass
+
+    def after_build_up(self, name, instance, overrides, *args, **kwargs):
+        pass
+
+    def before_resolve_type(self, name, *args, **kwargs):
+        pass
+
+    def after_resolve_type(self, name, type, *args, **kwargs):  # @ReservedAssignment
+        pass
+
+    def after_clear(self, name):
+        pass
 
 
 class DIContainer(object):
@@ -93,7 +134,7 @@ class DIContainer(object):
 
     """
 
-    def __init__(self, settings):
+    def __init__(self, settings, *args, **kwargs):
         """
         Creates a new DI Container.
 
@@ -101,13 +142,32 @@ class DIContainer(object):
                          configuration.
         :type settings: dict
         """
+
+        dispatcher_type = kwargs.get('event_dispatcher', DIEventDispatcher)
+
+        self.event_dispatcher = dispatcher_type(container=self)
+
         self.settings = settings
         self.names = settings.keys()
         self.singletons = {}
 
+        self.value_resolvers = {
+            'mod': self._resolve_module_value,
+            'ref': self._resolve_reference_value,
+            'rel': self._resolve_relation_value,
+            'factory': self._resolve_factory_value,
+            'attr': self._resolve_attribute_value
+        }
+
+        self.value_resolvers.update(
+            kwargs.get('value_resolvers', {})
+        )
+
         for key, conf in self.settings.items():
             if not conf.get('lazy', True):
                 self.resolve(key)
+
+        self.event_dispatcher.initialized()
 
     # ---------------------------
     # private methods
@@ -138,6 +198,51 @@ class DIContainer(object):
         mod = import_module(type_path)
         return getattr(mod, type_name)
 
+    def _resolve_module_value(self, value_conf):
+        """
+        Resolves a module, given in the value_conf.
+        :param value_conf: str
+        :rtype: object
+        """
+        key, name = value_conf.split(':', 1)  # @UnusedVariable
+        return import_module(name)
+
+    def _resolve_relation_value(self, value_conf):
+        """
+        Resolve an object with the given name in this container.
+        :param value_conf: str
+        :rtype: object
+        """
+        key, name = value_conf.split(':', 1)  # @UnusedVariable
+        return self.resolve(name)
+
+    def _resolve_reference_value(self, value_conf):
+        """
+        Resolves the given module and returns the given object off it.
+        :param value_conf: str
+        :rtype: object
+        """
+        key, name = value_conf.split(':', 1)  # @UnusedVariable
+        mod_name, var_name = name.rsplit('.', 1)
+        mod = import_module(mod_name)
+        return getattr(mod, var_name)
+
+    def _resolve_factory_value(self, value_conf):
+        """
+        Resolves the factory method and returns the factories response.
+        :param value_conf:
+        :rtype: object
+        """
+        key, name = value_conf.split(':', 1)  # @UnusedVariable
+        mod_name, factory_name = name.rsplit('.', 1)
+        mod = import_module(mod_name)
+        return getattr(mod, factory_name)()
+
+    def _resolve_attribute_value(self, value_conf):
+        pre_conf, attr_name = value_conf.rsplit('.', 1)
+        instance = self._resolve_reference_value(pre_conf)
+        return getattr(instance, attr_name)
+
     def _resolve_value(self, value_conf):
         """
         resolves a value from a string.
@@ -154,20 +259,9 @@ class DIContainer(object):
         """
         value = value_conf
         if isinstance(value_conf, str):
-            # keyword: rel - relation to another di object
-            if value_conf.startswith('rel:'):
-                key, name = value_conf.split(':', 1)  # @UnusedVariable
-                return self.resolve(name)
-            # keyword: mod - relation to an module import follows
-            if value_conf.startswith('mod:'):
-                key, name = value_conf.split(':', 1)  # @UnusedVariable
-                return import_module(name)
-            # reference to an type / variable in an module
-            if value_conf.startswith('ref:'):
-                key, name = value_conf.split(':', 1)  # @UnusedVariable
-                mod_name, var_name = name.rsplit('.', 1)
-                mod = import_module(mod_name)
-                return getattr(mod, var_name)
+            for key, resolver in self.value_resolvers.iteritems():
+                if value_conf.startswith('%s:' % key):
+                    return resolver(value_conf)
         return value
 
     def _resolve_args(self, conf):
@@ -228,9 +322,14 @@ class DIContainer(object):
         :param settings: the sessings dictionary for the new type.
         :type settings: dict
         """
+
+        self.event_dispatcher.before_register(name=name, settings=settings)
+
         if name in self.settings:
             raise KeyError('there is already a configuration with this name.')
         self.settings[name] = settings
+
+        self.event_dispatcher.after_register(name=name, settings=settings)
 
     def resolve(self, name):
         """
@@ -241,6 +340,8 @@ class DIContainer(object):
 
         :returns: object
         """
+
+        self.event_dispatcher.before_resolve(name=name)
 
         # check if there already is a singleton instance
         # for this name
@@ -269,6 +370,8 @@ class DIContainer(object):
         if singleton:
             self.singletons[name] = obj
 
+        self.event_dispatcher.after_resolve(name=name, instance=obj)
+
         return obj
 
     def resolve_type(self, name):
@@ -280,8 +383,15 @@ class DIContainer(object):
 
         :returns: type
         """
+
+        self.event_dispatcher.before_resolve_type(name=name)
+
         conf = self.settings[name]
-        return self._resolve_type(conf['type'])
+        type_ = self._resolve_type(conf['type'])
+
+        self.event_dispatcher.after_resolve_type(name=name, type=type_)
+
+        return type_
 
     def build_up(self, name, instance, **overrides):
         """
@@ -298,11 +408,20 @@ class DIContainer(object):
 
         :returns: the buildup instance
         """
+
+        self.event_dispatcher.before_build_up(
+            name=name, instance=instance, overrides=overrides
+        )
+
         prop = self.settings[name].get('properties', {}).copy()
         prop.update(overrides)
 
         for key, value in prop.items():
             setattr(instance, key, self._resolve_value(value))
+
+        self.event_dispatcher.after_build_up(
+            name=name, instance=instance, overrides=overrides
+        )
 
         return instance
 
@@ -318,6 +437,8 @@ class DIContainer(object):
             del self.singletons[name]
         else:
             self.singletons = {}
+
+        self.event_dispatcher.after_clear(name=name)
 
     def create_child_container(self, settings):
         # TODO: Copy singleton reference into the child container
@@ -352,6 +473,29 @@ class DIContainer(object):
         return self.resolve(name)
 
 
-def inject(fnc):
-    def wrapper(*args, **kwargs):
-        pass
+def reference(value):
+    return 'ref:{0}'.format(value)
+
+ref = reference
+
+
+def relation(value):
+    return 'rel:{0}'.format(value)
+
+rel = relation
+
+
+def module(value):
+    return 'mod:{0}'.format(value)
+
+mod = module
+
+
+def factory(value):
+    return 'factory:{0}'.format(value)
+
+fac = factory
+
+
+def attr(value):
+    return 'attr:{0}'.format(value)
