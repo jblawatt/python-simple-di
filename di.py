@@ -211,7 +211,8 @@ class DIContainer(object):
         """
         if not issubclass(type_, expected):
             raise TypeError(
-                '%s is not a subclass of %s. This violates the configuration for key %s'
+                '%s is not a subclass of %s. This violates the'
+                'configuration for key %s'
                 % (type_, expected, conf_name)
             )
 
@@ -349,3 +350,8 @@ class DIContainer(object):
             raise AttributeError(
                 'no component named "%s". please adjust in settings.' % name)
         return self.resolve(name)
+
+
+def inject(fnc):
+    def wrapper(*args, **kwargs):
+        pass

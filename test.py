@@ -88,6 +88,14 @@ TEST_DI_SETTINGS = {
         'type': 'test.TestPerson',
         'assert_type': 'test.PersonBase',
         'args': {'': ['Jens', 'Blawatt', 27]},
+    },
+    'logging_mod': {
+        'type': '__builtin__.dict',
+        'args': {'logging': 'mod:logging'}
+    },
+    'logging_ref': {
+        'type': '__builtin__.dict',
+        'args': {'DEBUG': 'ref:logging.DEBUG'}
     }
 }
 
@@ -182,6 +190,53 @@ class DIContainerTestCase(TestCase):
             will_not_raise()
         except Exception as e:
             self.fail('raised unexpected error: %s' % e)
+
+    def test_logging_mod(self):
+        objekt = self.manager.logging_mod
+        self.assertTrue(isinstance(objekt, dict))
+        module = objekt.get('logging')
+        self.assertEqual(module.DEBUG, 10)
+
+    def test_logging_ref(self):
+        objekt = self.manager.logging_ref
+        value = objekt.get('DEBUG')
+        self.assertTrue(value, 10)
+
+    def test_resolve_type(self):
+        type_ = self.manager.resolve_type('jens')
+        self.assertEqual(type_, TestPerson)
+
+    def test_does_not_exist(self):
+        def fnc():
+            self.manager.does_not_exist
+        self.assertRaises(AttributeError, fnc)
+
+    def test_dir(self):
+        values = dir(self.manager)
+        for k in TEST_DI_SETTINGS.keys():
+            self.assertIn(k, values)
+
+    def test_register_registered(self):
+        def fnc():
+            self.manager.register('jens', dict())
+        self.assertRaises(KeyError, fnc)
+
+    def test_clear_singleton(self):
+        def setUp():
+            self.manager.singletons['foo'] = 'FOO'
+            self.manager.singletons['bar'] = 'BAR'
+
+        setUp()
+        self.manager.clear('foo')
+        self.assertNotIn('foo', self.manager.singletons)
+        self.assertIn('bar', self.manager.singletons)
+
+        self.manager.singletons = dict()
+
+        setUp()
+        self.manager.clear()
+        self.assertNotIn('foo', self.manager.singletons)
+        self.assertNotIn('bar', self.manager.singletons)
 
 if __name__ == '__main__':
     unittest.main()

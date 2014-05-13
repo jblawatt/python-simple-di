@@ -6,13 +6,15 @@
 Welcome to Python Simple DI's documentation!
 ============================================
 
-Contents:
-
 .. toctree::
    :maxdepth: 2
+   
+   installation
+   tutorial
 
 .. automodule:: di
     :members:
+
 
 Indices and tables
 ==================
