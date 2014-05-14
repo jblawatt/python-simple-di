@@ -5,7 +5,7 @@ SHELL=bash
 env:
 	virtualenv --no-site-packages env
 	env/bin/python setup.py develop
-	env/bin/pip install pep8 pyflakes coverage
+	env/bin/pip install pep8 pyflakes coverage mock
     
 test: env
 	. env/bin/activate; python -m unittest test
