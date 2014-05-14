@@ -150,6 +150,7 @@ class DIContainer(object):
         self.settings = settings
         self.names = settings.keys()
         self.singletons = {}
+        self.parent = kwargs.get('parent', None)
 
         self.value_resolvers = {
             'mod': self._resolve_module_value,
@@ -444,7 +445,7 @@ class DIContainer(object):
         # TODO: Copy singleton reference into the child container
         orig_settings = copy(self.settings)
         orig_settings.update(settings)
-        return type(self)(orig_settings)
+        return type(self)(orig_settings, parent=self)
 
     def __dir__(self):
         """
