@@ -17,7 +17,8 @@ setup_args = {
     'author_email': di.__author_email__,
     'url': di.__website__,
     'py_modules': ['di'],
-    'licence': 'MIT'
+    'licence': 'MIT',
+    'install_requires': ['importlib']
 }
 
 

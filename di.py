@@ -9,7 +9,7 @@ from importlib import import_module
 
 __major__ = 1
 __minor__ = 3
-__bugfix__ = 1
+__bugfix__ = 2
 
 __version__ = '%s.%s.%s' % (__major__, __minor__, __bugfix__)
 
