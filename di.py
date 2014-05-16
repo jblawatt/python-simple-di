@@ -5,8 +5,6 @@ import logging
 
 from copy import copy
 
-from importlib import import_module
-
 __major__ = 1
 __minor__ = 3
 __bugfix__ = 2
@@ -170,6 +168,10 @@ class DIContainer(object):
 
         self.event_dispatcher.initialized()
 
+    def import_module(self, name, package=None):
+        from importlib import import_module
+        return import_module(name, package)
+
     # ---------------------------
     # private methods
     # ---------------------------
@@ -196,7 +198,7 @@ class DIContainer(object):
                 sys.path.append(path)
 
         type_path, type_name = python_name.rsplit('.', 1)
-        mod = import_module(type_path)
+        mod = self.import_module(type_path)
         return getattr(mod, type_name)
 
     def _resolve_module_value(self, value_conf):
@@ -205,6 +207,9 @@ class DIContainer(object):
         :param value_conf: str
         :rtype: object
         """
+
+        from importlib import import_module
+
         key, name = value_conf.split(':', 1)  # @UnusedVariable
         return import_module(name)
 
@@ -225,7 +230,7 @@ class DIContainer(object):
         """
         key, name = value_conf.split(':', 1)  # @UnusedVariable
         mod_name, var_name = name.rsplit('.', 1)
-        mod = import_module(mod_name)
+        mod = self.import_module(mod_name)
         return getattr(mod, var_name)
 
     def _resolve_factory_value(self, value_conf):
@@ -236,7 +241,7 @@ class DIContainer(object):
         """
         key, name = value_conf.split(':', 1)  # @UnusedVariable
         mod_name, factory_name = name.rsplit('.', 1)
-        mod = import_module(mod_name)
+        mod = self.import_module(mod_name)
         return getattr(mod, factory_name)()
 
     def _resolve_attribute_value(self, value_conf):
