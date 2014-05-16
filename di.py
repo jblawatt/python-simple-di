@@ -7,7 +7,7 @@ from copy import copy
 
 __major__ = 1
 __minor__ = 3
-__bugfix__ = 2
+__bugfix__ = 3
 
 __version__ = '%s.%s.%s' % (__major__, __minor__, __bugfix__)
 
