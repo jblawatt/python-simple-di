@@ -22,7 +22,9 @@ _logger = logging.getLogger(__name__)
 
 __all__ = [
     'DIEventDispatcher', 'DIContainer', 'attr', 'module', 'mod', 'factory',
-    'fac', 'relation', 'rel', 'reference', 'ref',
+    'RelationResolver', 'ReferenceResolver', 'ModuleResolver',
+    'FactoryResolver', 'AttributeResolver', 'fac', 'relation', 'rel',
+    'reference', 'ref',
 ]
 
 
@@ -207,11 +209,7 @@ class DIContainer(object):
         :param value_conf: str
         :rtype: object
         """
-
-        from importlib import import_module
-
-        key, name = value_conf.split(':', 1)  # @UnusedVariable
-        return import_module(name)
+        return ModuleResolver(value_conf).resolve(self)
 
     def _resolve_relation_value(self, value_conf):
         """
@@ -219,8 +217,7 @@ class DIContainer(object):
         :param value_conf: str
         :rtype: object
         """
-        key, name = value_conf.split(':', 1)  # @UnusedVariable
-        return self.resolve(name)
+        return RelationResolver(value_conf).resolve(self)
 
     def _resolve_reference_value(self, value_conf):
         """
@@ -228,10 +225,7 @@ class DIContainer(object):
         :param value_conf: str
         :rtype: object
         """
-        key, name = value_conf.split(':', 1)  # @UnusedVariable
-        mod_name, var_name = name.rsplit('.', 1)
-        mod = self.import_module(mod_name)
-        return getattr(mod, var_name)
+        return ReferenceResolver(value_conf).resolve(self)
 
     def _resolve_factory_value(self, value_conf):
         """
@@ -239,15 +233,10 @@ class DIContainer(object):
         :param value_conf:
         :rtype: object
         """
-        key, name = value_conf.split(':', 1)  # @UnusedVariable
-        mod_name, factory_name = name.rsplit('.', 1)
-        mod = self.import_module(mod_name)
-        return getattr(mod, factory_name)()
+        return FactoryResolver(value_conf).resolve(self)
 
     def _resolve_attribute_value(self, value_conf):
-        pre_conf, attr_name = value_conf.rsplit('.', 1)
-        instance = self._resolve_reference_value(pre_conf)
-        return getattr(instance, attr_name)
+        return AttributeResolver(value_conf).resolve(self)
 
     def _resolve_value(self, value_conf):
         """
@@ -264,6 +253,8 @@ class DIContainer(object):
         :returns: object
         """
         value = value_conf
+        if isinstance(value, Resolver):
+            return value.resolve(self)
         if isinstance(value_conf, str):
             for key, resolver in self.value_resolvers.iteritems():
                 if value_conf.startswith('%s:' % key):
@@ -479,29 +470,107 @@ class DIContainer(object):
         return self.resolve(name)
 
 
-def reference(value):
-    return 'ref:{0}'.format(value)
+class Resolver(object):
 
-ref = reference
+    key = ''
 
+    def __init__(self, value_conf):
+        """
+        :param value_conf: argument configuration string.
+        :type value_conf: str
+        """
+        if value_conf.startswith(self.key):
+            self.value_conf = value_conf[len(self.key) + 1:]
+        else:
+            self.value_conf = value_conf
 
-def relation(value):
-    return 'rel:{0}'.format(value)
-
-rel = relation
-
-
-def module(value):
-    return 'mod:{0}'.format(value)
-
-mod = module
-
-
-def factory(value):
-    return 'factory:{0}'.format(value)
-
-fac = factory
+    def resolve(self, container):
+        """
+        :param container: a dicontainer instance
+        :type container: di.DIContainer
+        """
+        raise NotImplementedError()
 
 
-def attr(value):
-    return 'attr:{0}'.format(value)
+class ReferenceResolver(Resolver):
+
+    key = 'ref'
+
+    def resolve(self, container):
+        """
+        Resolves a value by pythonpath.
+        :type container: di.DIContainer
+        :param container:
+        :rtype: object
+        """
+        mod_name, var_name = self.value_conf.rsplit('.', 1)
+        mod = container.import_module(mod_name)
+        return getattr(mod, var_name)
+
+
+reference = ref = ReferenceResolver
+
+
+class RelationResolver(Resolver):
+
+    key = 'rel'
+
+    def resolve(self, container):
+        """
+        :type container: di.DIContainer
+        :param container:
+        :rtype: object
+        """
+        return container.resolve(self.value_conf)
+
+
+relation = rel = RelationResolver
+
+
+class ModuleResolver(Resolver):
+
+    key = 'mod'
+
+    def resolve(self, container):
+        """
+        :type container: di.DIContainer
+        :param container:
+        :rtype: object
+        """
+        return container.import_module(self.value_conf)
+
+
+module = mod = ModuleResolver
+
+
+class FactoryResolver(Resolver):
+
+    key = 'factory'
+
+    def resolve(self, container):
+        """
+        :type container: di.DIContainer
+        :param container:
+        :rtype: object
+        """
+        mod_name, factory_name = self.value_conf.rsplit('.', 1)
+        mod = container.import_module(mod_name)
+        return getattr(mod, factory_name)()
+
+
+fac = factory = FactoryResolver
+
+
+class AttributeResolver(Resolver):
+
+    key = 'attr'
+
+    def resolve(self, container):
+        """
+        :type container: di.DIContainer
+        :param container:
+        :rtype: object
+        """
+        pre_conf, attr_name = self.value_conf.rsplit('.', 1)
+        instance = ReferenceResolver(pre_conf).resolve(container)
+        return getattr(instance, attr_name)
