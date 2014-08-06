@@ -430,7 +430,7 @@ class DIContainer(object):
                      destroied.
         :type name: str
         """
-        if name:
+        if name and name in self.singletons:
             del self.singletons[name]
         else:
             self.singletons = {}
