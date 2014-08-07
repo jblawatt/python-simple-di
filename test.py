@@ -42,13 +42,13 @@ temp_file = temp_file + '.py'
 
 TEST_DI_SETTINGS = {
     'person': {
-        'type': 'test.TestPerson',
+        'type': '__main__.TestPerson',
         'args': {
             '': [None, None, 0]
         }
     },
     'jessica': {
-        'type': 'test.TestPerson',
+        'type': '__main__.TestPerson',
         'args': {
             'first_name': 'Jessica',
             'last_name': 'Backhaus',
@@ -57,7 +57,7 @@ TEST_DI_SETTINGS = {
         'singleton': True,
     },
     'jens': {
-        'type': 'test.TestPerson',
+        'type': '__main__.TestPerson',
         'singleton': True,
         'args': {
             '': ['Jens', 'Blawatt', 27]
@@ -68,7 +68,7 @@ TEST_DI_SETTINGS = {
         }
     },
     'jens_nl': {
-        'type': 'test.TestPerson',
+        'type': '__main__.TestPerson',
         'singleton': True,
         'lazy': False,
         'args': {'': ['Jens', 'Blawatt', 27]},
@@ -81,13 +81,13 @@ TEST_DI_SETTINGS = {
         }
     },
     'jens_assert_base': {
-        'type': 'test.TestPersonWithBase',
-        'assert_type': 'test.PersonBase',
+        'type': '__main__.TestPersonWithBase',
+        'assert_type': '__main__.PersonBase',
         'args': {'': ['Jens', 'Blawatt', 27]},
     },
     'jens_assert_no_base': {
-        'type': 'test.TestPerson',
-        'assert_type': 'test.PersonBase',
+        'type': '__main__.TestPerson',
+        'assert_type': '__main__.PersonBase',
         'args': {'': ['Jens', 'Blawatt', 27]},
     },
     'logging_mod': {
@@ -228,6 +228,7 @@ class DIContainerTestCase(TestCase):
             self.manager.singletons['bar'] = 'BAR'
 
         setUp()
+        self.manager.clear('not-in-singletons')
         self.manager.clear('foo')
         self.assertNotIn('foo', self.manager.singletons)
         self.assertIn('bar', self.manager.singletons)
