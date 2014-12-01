@@ -42,13 +42,13 @@ temp_file = temp_file + '.py'
 
 TEST_DI_SETTINGS = {
     'person': {
-        'type': '__main__.TestPerson',
+        'type': 'test.TestPerson',
         'args': {
             '': [None, None, 0]
         }
     },
     'jessica': {
-        'type': '__main__.TestPerson',
+        'type': 'test.TestPerson',
         'args': {
             'first_name': 'Jessica',
             'last_name': 'Backhaus',
@@ -57,7 +57,7 @@ TEST_DI_SETTINGS = {
         'singleton': True,
     },
     'jens': {
-        'type': '__main__.TestPerson',
+        'type': 'test.TestPerson',
         'singleton': True,
         'args': {
             '': ['Jens', 'Blawatt', 27]
@@ -68,7 +68,7 @@ TEST_DI_SETTINGS = {
         }
     },
     'jens_nl': {
-        'type': '__main__.TestPerson',
+        'type': 'test.TestPerson',
         'singleton': True,
         'lazy': False,
         'args': {'': ['Jens', 'Blawatt', 27]},
@@ -81,13 +81,13 @@ TEST_DI_SETTINGS = {
         }
     },
     'jens_assert_base': {
-        'type': '__main__.TestPersonWithBase',
-        'assert_type': '__main__.PersonBase',
+        'type': 'test.TestPersonWithBase',
+        'assert_type': 'test.PersonBase',
         'args': {'': ['Jens', 'Blawatt', 27]},
     },
     'jens_assert_no_base': {
-        'type': '__main__.TestPerson',
-        'assert_type': '__main__.PersonBase',
+        'type': 'test.TestPerson',
+        'assert_type': 'test.PersonBase',
         'args': {'': ['Jens', 'Blawatt', 27]},
     },
     'logging_mod': {

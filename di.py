@@ -482,7 +482,7 @@ class DIContainer(object):
         :type force: bool
         :rtype: types.FunctionType
         """
-        def wrapper(func, *args, **kwargs):
+        def wrapper(func):
             def inner(*args, **kwargs):
                 for key, name in inject_kwargs.items():
                     if force or key not in kwargs:
