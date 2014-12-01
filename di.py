@@ -6,8 +6,8 @@ import logging
 from copy import copy
 
 __major__ = 1
-__minor__ = 3
-__bugfix__ = 3
+__minor__ = 4
+__bugfix__ = 0
 
 __version__ = '%s.%s.%s' % (__major__, __minor__, __bugfix__)
 
@@ -20,12 +20,12 @@ __author_website__ = 'http://www.blawatt.de/'
 _logger = logging.getLogger(__name__)
 
 
-__all__ = [
+__all__ = (
     'DIEventDispatcher', 'DIContainer', 'attr', 'module', 'mod', 'factory',
     'RelationResolver', 'ReferenceResolver', 'ModuleResolver',
     'FactoryResolver', 'AttributeResolver', 'fac', 'relation', 'rel',
     'reference', 'ref',
-]
+)
 
 
 class DIEventDispatcher(object):
@@ -57,7 +57,7 @@ class DIEventDispatcher(object):
     def before_resolve_type(self, name, *args, **kwargs):
         pass
 
-    def after_resolve_type(self, name, type, *args, **kwargs):  # @ReservedAssignment
+    def after_resolve_type(self, name, type, *args, **kwargs):
         pass
 
     def after_clear(self, name):
@@ -463,11 +463,32 @@ class DIContainer(object):
         :type name: str
 
         :returns: object
+        :rtype: object
         """
         if not name in self.settings:
             raise AttributeError(
                 'no component named "%s". please adjust in settings.' % name)
         return self.resolve(name)
+
+    def inject(self, force=False, **inject_kwargs):
+        """
+        method that can be used as decorator for another function.
+        it can inject values from the container to keyworkd arguments,
+        given in the **inject_kwargs.
+
+        :param force: defines if the given value should be overwritten with
+            the containers value. default: False.
+        :type force: bool
+        :rtype: types.FunctionType
+        """
+        def wrapper(func, *args, **kwargs):
+            def inner(*args, **kwargs):
+                for key, name in inject_kwargs.items():
+                    if force or key not in kwargs:
+                        kwargs[key] = self.resolve(name)
+                return func(*args, **kwargs)
+            return inner
+        return wrapper
 
 
 class Resolver(object):
@@ -574,3 +595,5 @@ class AttributeResolver(Resolver):
         pre_conf, attr_name = self.value_conf.rsplit('.', 1)
         instance = ReferenceResolver(pre_conf).resolve(container)
         return getattr(instance, attr_name)
+
+attr = AttributeResolver

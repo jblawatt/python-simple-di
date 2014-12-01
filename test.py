@@ -150,7 +150,11 @@ class DIContainerTestCase(TestCase):
         self.assertNotIn('jens', self.manager.singletons)
 
     def test__register(self):
-        self.manager.register('henrik', {'type': 'test.TestPerson', 'singleton': True, 'args': {'': ['Henrik', 'Blawatt', 24]}})
+        self.manager.register('henrik', {
+            'type': 'test.TestPerson',
+            'singleton': True,
+            'args': {'': ['Henrik', 'Blawatt', 24]}
+        })
 
         henrik1 = self.manager.henrik
         henrik2 = self.manager.resolve('henrik')
@@ -181,9 +185,11 @@ class DIContainerTestCase(TestCase):
 
         def will_raise():
             o = self.manager.jens_assert_no_base
+            assert o
 
         def will_not_raise():
             o = self.manager.jens_assert_base
+            assert o
 
         self.assertRaises(TypeError, will_raise)
 
@@ -256,7 +262,38 @@ class DIContainerTestCase(TestCase):
                        'after_resolve', 'before_resolve', 'before_build_up',
                        'after_build_up', 'before_resolve_type', 'after_resolve_type',
                        'after_clear',):
-            self.assertTrue(getattr(manager.event_dispatcher, method).called, 'called method %s.' % method)
+            self.assertTrue(
+                getattr(manager.event_dispatcher, method).called,
+                'called method {}.'.format(method)
+            )
+
+    def test_inject(self):
+        @self.manager.inject(person='henrik')
+        def to_inject_function(person=None):
+            self.assertIsNotNone(person)
+            self.assertEqual(person.first_name, 'Henrik')
+
+        to_inject_function()
+
+    def test_child_container(self):
+
+        ccontainer = self.manager.create_child_container({
+            'jens': {
+                'type': 'test.TestPerson',
+                'args': {
+                    'first_name': 'Jens',
+                    'last_name': 'Backhaus',
+                    'age': 32
+                }
+            }
+        })
+
+        jens_bl = self.manager.resolve('jens')
+        jens_ba = ccontainer.resolve('jens')
+
+        self.assertNotEqual(jens_ba, jens_bl)
+        self.assertEqual(jens_ba.first_name, jens_bl.first_name)
+        self.assertEqual(jens_ba.last_name, 'Backhaus')
 
 if __name__ == '__main__':
     unittest.main()
