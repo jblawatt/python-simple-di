@@ -1,4 +1,4 @@
-include: di.py
-include: VERSION
-include: README.rst
-include: setup.py
+include di.py
+include VERSION
+include README.rst
+include setup.py

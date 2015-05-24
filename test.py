@@ -6,10 +6,13 @@ import os
 import sys
 import mock
 import tempfile
-import unittest
-from unittest import TestCase
 
-from di import DIContainer
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
+
+from di import DIContainer, attr, rel, ref
 
 
 class PersonBase(object):
@@ -42,13 +45,13 @@ temp_file = temp_file + '.py'
 
 TEST_DI_SETTINGS = {
     'person': {
-        'type': 'test.TestPerson',
+        'type': 'mock.MagicMock',
         'args': {
             '': [None, None, 0]
         }
     },
     'jessica': {
-        'type': 'test.TestPerson',
+        'type': 'mock.MagicMock',
         'args': {
             'first_name': 'Jessica',
             'last_name': 'Backhaus',
@@ -91,17 +94,21 @@ TEST_DI_SETTINGS = {
         'args': {'': ['Jens', 'Blawatt', 27]},
     },
     'logging_mod': {
-        'type': '__builtin__.dict',
+        'type': 'dict',
         'args': {'logging': 'mod:logging'}
     },
     'logging_ref': {
-        'type': '__builtin__.dict',
+        'type': 'dict',
         'args': {'DEBUG': 'ref:logging.DEBUG'}
+    },
+    'mock_person': {
+        'type': 'mock.MagicMock',
+
     }
 }
 
 
-class DIContainerTestCase(TestCase):
+class DIContainerTestCase(unittest.TestCase):
 
     def setUp(self):
         self.manager = DIContainer(TEST_DI_SETTINGS)
@@ -265,7 +272,7 @@ class DIContainerTestCase(TestCase):
                        'after_clear',):
             self.assertTrue(
                 getattr(manager.event_dispatcher, method).called,
-                'called method {}.'.format(method)
+                'called method {0}.'.format(method)
             )
 
     def test_inject(self):
@@ -275,6 +282,22 @@ class DIContainerTestCase(TestCase):
             self.assertEqual(person.first_name, 'Henrik')
 
         to_inject_function()
+
+    def test_inject_force(self):
+        @self.manager.inject(force=True, person='henrik')
+        def to_inject_function(person=None):
+            self.assertIsNotNone(person)
+            self.assertEqual(person.first_name, 'Henrik')
+
+        to_inject_function(person=self.manager.jens)
+
+    def test_inject_noforce(self):
+        @self.manager.inject(force=False, person='henrik')
+        def to_inject_function(person=None):
+            self.assertIsNotNone(person)
+            self.assertEqual(person.first_name, 'Jens')
+
+        to_inject_function(person=self.manager.jens)
 
     def test_child_container(self):
 
@@ -295,6 +318,19 @@ class DIContainerTestCase(TestCase):
         self.assertNotEqual(jens_ba, jens_bl)
         self.assertEqual(jens_ba.first_name, jens_bl.first_name)
         self.assertEqual(jens_ba.last_name, 'Backhaus')
+
+    def test_resolver_attr(self):
+
+        container = DIContainer({})
+        container.register('python_sys', {
+            'type': 'mock.MagicMock',
+            'args': {
+                'version_info': attr('sys.version_info')
+            }
+        })
+
+        py_sys = container.resolve('python_sys')
+        self.assertEqual(py_sys.version_info, sys.version_info)
 
 if __name__ == '__main__':
     unittest.main()

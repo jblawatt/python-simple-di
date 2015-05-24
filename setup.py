@@ -1,24 +1,37 @@
 # coding: utf-8
 
-import sys
-sys.path.append('src/')
-
 import di
+import sys
 from setuptools import setup
+
+
+py26 = sys.version_info < (2, 7)
+py27 = not py26 and sys.version_info < (3, 0)
+py3 = sys.version_info >= (3, 0)
+
+
+if py26:
+    install_requires = ['importlib']
+else:
+    install_requires = []
 
 
 setup_args = {
     'name': 'python-simple-di',
     'version': di.__version__,
     'description': 'A simple dependency injection container.',
-    'long_description': open('README.rst').read(),
-    'url': 'http://bitbucket.org/jblawatt/python-simple-di',
+    'long_description': open('README.rst', 'r').read(),
     'author': di.__author__,
     'author_email': di.__author_email__,
     'url': di.__website__,
     'py_modules': ['di'],
-    'licence': 'MIT',
-    'install_requires': ['importlib']
+    'license': 'MIT',
+    'install_requires': install_requires,
+    'classifiers': [
+        'Development Status :: 5 - Production/Stable',
+        'License :: OSI Approved :: MIT License',
+        'Topic :: Utilities'
+    ]
 }
 
 

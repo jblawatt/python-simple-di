@@ -2,25 +2,19 @@
 
 SHELL=bash
 
-env:
-	virtualenv --no-site-packages env
-	env/bin/python setup.py develop
-	env/bin/pip install pep8 pyflakes coverage mock
-    
-test: env
-	. env/bin/activate; python -m unittest test
+pythonenv:
+	virtualenv pythonenv
+	pythonenv/bin/pip install tox pip --upgrade
+
+test:
+	pythonenv/bin/tox
 
 clean:
-	rm -rf env
-
-clean-py:
 	find -name "*.pyc" -delete
+	find -name "*.*~" -delete
 
-check: env
-	. env/bin/activate; pep8 di.py
-	. env/bin/activate; pyflakes di.py
 
-coverage: env
-	test -d htmlcov && rm -rf htmlcov
-	. env/bin/activate; coverage run -m unittest test; \
-        coverage html; coverage report; coverage erase
+dist:
+	# /usr/bin/python2.6 setup.py sdist --formats=zip,gztar,bztar,ztar,tar
+	/usr/bin/python2.7 setup.py sdist --formats=zip,gztar,bztar,ztar,tar
+	/usr/bin/python3.3 setup.py sdist --formats=zip,gztar,bztar,ztar,tar

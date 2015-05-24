@@ -1,12 +1,18 @@
 # coding: utf-8
 
+from __future__ import unicode_literals, absolute_import
+
 import sys
 import logging
+import warnings
+import functools
 
+from abc import ABCMeta, abstractmethod
+from collections import namedtuple
 from copy import copy
 
 __major__ = 1
-__minor__ = 4
+__minor__ = 5
 __bugfix__ = 0
 
 __version__ = '%s.%s.%s' % (__major__, __minor__, __bugfix__)
@@ -26,6 +32,16 @@ __all__ = (
     'FactoryResolver', 'AttributeResolver', 'fac', 'relation', 'rel',
     'reference', 'ref',
 )
+
+py = sys.version_info
+py3 = py >= (3, 0, 0)
+py2 = not py3
+
+
+if py3:
+    string_types = (str,)
+else:
+    string_types = (str, unicode)
 
 
 class DIEventDispatcher(object):
@@ -62,6 +78,27 @@ class DIEventDispatcher(object):
 
     def after_clear(self, name):
         pass
+
+
+default_config = {
+    'type': None,
+    'args': [],
+    'singleton': False,
+    'lazy': True,
+    'properties': {},
+    'assert_type': None
+}
+
+
+class DIConfig(namedtuple('DIConfig', default_config.keys())):
+
+    def __new__(cls, **kwargs):
+        type_ = kwargs.get('type')
+        if not type_:
+            raise ValueError("'type' argument is required.")
+        cls_kwargs = copy(default_config)
+        cls_kwargs.update(kwargs)
+        return super(DIConfig, cls).__new__(cls, **cls_kwargs)
 
 
 class DIContainer(object):
@@ -143,15 +180,27 @@ class DIContainer(object):
         :type settings: dict
         """
 
+        _logger.debug(
+            'Container __init__ called. Begin to bootstrap this container.')
+
         dispatcher_type = kwargs.get('event_dispatcher', DIEventDispatcher)
 
         self.event_dispatcher = dispatcher_type(container=self)
 
         self.settings = settings
+        for key, config in self.settings.items():
+            if not isinstance(self.settings[key], DIConfig):
+                # create an instance of DIConfig for each config element.
+                # that makes it easier to work with it later.
+                self.settings[key] = DIConfig(**config)
+                _logger.debug('Created DIConfig for configuration key %s.', key)
+
         self.names = settings.keys()
         self.singletons = {}
         self.parent = kwargs.get('parent', None)
 
+        # assign default resolvers. better use a resolver instance.
+        # maybe remove this in some version.
         self.value_resolvers = {
             'mod': self._resolve_module_value,
             'ref': self._resolve_reference_value,
@@ -160,17 +209,30 @@ class DIContainer(object):
             'attr': self._resolve_attribute_value
         }
 
-        self.value_resolvers.update(
-            kwargs.get('value_resolvers', {})
-        )
+        # check if individual value_resolves are given. update the internal
+        # resolver dictionary with this values.
+        if 'value_resolvers' in kwargs:
+            _logger.debug('Updating value_resolvers with the given ones.')
+            warnings.warn(
+                '"value_resolvers" is deprecated. '
+                'Use a Resolver instance in your configuration.',
+                DeprecationWarning)
+            self.value_resolvers.update(kwargs.get('value_resolvers'))
 
+        _logger.debug('checking for non-lazy configrations.')
         for key, conf in self.settings.items():
-            if not conf.get('lazy', True):
+            if not conf.lazy:
+                _logger.debug(
+                    'found non-lazy configuration %s. resovling it.', key)
                 self.resolve(key)
 
         self.event_dispatcher.initialized()
 
     def import_module(self, name, package=None):
+        """
+        Internal method to wrap the import_module function.
+        """
+        _logger.debug('calling import_module with name=%s, package=%s.', name, package)
         from importlib import import_module
         return import_module(name, package)
 
@@ -194,12 +256,32 @@ class DIContainer(object):
 
         # check if python_name contains a : to split path
         # and python_name
-        if ':' in python_name:
-            path, python_name = python_name.split(':')
-            if not path in sys.path:
-                sys.path.append(path)
 
-        type_path, type_name = python_name.rsplit('.', 1)
+        _logger.debug('resolving type "%s."', python_name)
+
+        if (py2 and isinstance(python_name, string_types)) or \
+                (py3 and isinstance(python_name, str)):
+            if ':' in python_name:
+                path, python_name = python_name.split(':')
+                if path not in sys.path:
+                    sys.path.append(path)
+            try:
+                type_path, type_name = python_name.rsplit('.', 1)
+            except ValueError:
+                if py3:
+                    type_path = 'builtins'
+                    type_name = python_name
+                else:  # 2.x
+                    type_path = '__builtin__'
+                    type_name = python_name
+        else:
+            if len(python_name) == 3:
+                path, type_path, type_name = python_name
+                if path not in sys.path:
+                    sys.path.append(path)
+            else:
+                type_path, type_name = python_name
+
         mod = self.import_module(type_path)
         return getattr(mod, type_name)
 
@@ -236,6 +318,11 @@ class DIContainer(object):
         return FactoryResolver(value_conf).resolve(self)
 
     def _resolve_attribute_value(self, value_conf):
+        """
+        Resolves an attribute of an instance.
+        :param value_conf:
+        :return: object
+        """
         return AttributeResolver(value_conf).resolve(self)
 
     def _resolve_value(self, value_conf):
@@ -246,6 +333,8 @@ class DIContainer(object):
         * ''rel'': relates to anoter type of in this container.
         * ''mod'': imports and return a module/package with that name.
         * ''ref'': load a variable off a module/package.
+        * ''attr'':
+        * ''factory'':
 
         :param value_conf: the value to pass or resolve.
         :type value_conf: dict
@@ -255,8 +344,8 @@ class DIContainer(object):
         value = value_conf
         if isinstance(value, Resolver):
             return value.resolve(self)
-        if isinstance(value_conf, str):
-            for key, resolver in self.value_resolvers.iteritems():
+        if isinstance(value_conf, string_types):
+            for key, resolver in self.value_resolvers.items():
                 if value_conf.startswith('%s:' % key):
                     return resolver(value_conf)
         return value
@@ -302,7 +391,7 @@ class DIContainer(object):
         """
         if not issubclass(type_, expected):
             raise TypeError(
-                '%s is not a subclass of %s. This violates the'
+                '%s is not a subclass of %s. This violates the '
                 'configuration for key %s'
                 % (type_, expected, conf_name)
             )
@@ -317,23 +406,27 @@ class DIContainer(object):
         :param name: the name for the new configuration.
         :type name: str
         :param settings: the sessings dictionary for the new type.
-        :type settings: dict
+        :type settings: dict, di.DIConfig
         """
 
         self.event_dispatcher.before_register(name=name, settings=settings)
 
         if name in self.settings:
             raise KeyError('there is already a configuration with this name.')
-        self.settings[name] = settings
+        if isinstance(settings, dict):
+            conf = DIConfig(**settings)
+        else:
+            conf = settings
+        self.settings[name] = conf
 
-        self.event_dispatcher.after_register(name=name, settings=settings)
+        self.event_dispatcher.after_register(name=name, settings=conf)
 
     def resolve(self, name):
         """
         Resolves an object by its name assigned in the configuration.
 
         :param name: object's name in the configuration.
-        :type name: str
+        :type name: str, unicode
 
         :returns: object
         """
@@ -347,18 +440,21 @@ class DIContainer(object):
 
         # load information to create the instance
         conf = self.settings[name]
-        singleton = conf.get('singleton', False)
-        type_ = self._resolve_type(conf['type'])
+        singleton = conf.singleton
+        if isinstance(conf.type, string_types):
+            type_ = self._resolve_type(conf.type)
+        else:
+            type_ = conf.type
 
         # assert weather the type implements the
         # configures basetype.
-        assert_type = conf.get('assert_type', None)
+        assert_type = conf.assert_type
         if assert_type:
             expected_type = self._resolve_type(assert_type)
             self._check_type(name, type_, expected_type)
 
         # resolve the arguments to pass into the constructor
-        _args, _kwargs = self._resolve_args(conf.get('args', []))
+        _args, _kwargs = self._resolve_args(conf.args)
 
         # create the instance
         obj = type_(*_args, **_kwargs)
@@ -384,7 +480,7 @@ class DIContainer(object):
         self.event_dispatcher.before_resolve_type(name=name)
 
         conf = self.settings[name]
-        type_ = self._resolve_type(conf['type'])
+        type_ = self._resolve_type(conf.type)
 
         self.event_dispatcher.after_resolve_type(name=name, type=type_)
 
@@ -409,8 +505,8 @@ class DIContainer(object):
         self.event_dispatcher.before_build_up(
             name=name, instance=instance, overrides=overrides
         )
-
-        prop = self.settings[name].get('properties', {}).copy()
+        conf = self.settings[name]
+        prop = conf.properties.copy()
         prop.update(overrides)
 
         for key, value in prop.items():
@@ -466,7 +562,7 @@ class DIContainer(object):
         :returns: object
         :rtype: object
         """
-        if not name in self.settings:
+        if name not in self.settings:
             raise AttributeError(
                 'no component named "%s". please adjust in settings.' % name)
         return self.resolve(name)
@@ -483,6 +579,7 @@ class DIContainer(object):
         :rtype: types.FunctionType
         """
         def wrapper(func):
+            @functools.wraps(func)
             def inner(*args, **kwargs):
                 for key, name in inject_kwargs.items():
                     if force or key not in kwargs:
@@ -494,18 +591,21 @@ class DIContainer(object):
 
 class Resolver(object):
 
+    __metaclass__ = ABCMeta
+
     key = ''
 
     def __init__(self, value_conf):
         """
         :param value_conf: argument configuration string.
-        :type value_conf: str
+        :type value_conf: str, unicode
         """
         if value_conf.startswith(self.key):
             self.value_conf = value_conf[len(self.key) + 1:]
         else:
             self.value_conf = value_conf
 
+    @abstractmethod
     def resolve(self, container):
         """
         :param container: a dicontainer instance
@@ -525,9 +625,14 @@ class ReferenceResolver(Resolver):
         :param container:
         :rtype: object
         """
-        mod_name, var_name = self.value_conf.rsplit('.', 1)
-        mod = container.import_module(mod_name)
-        return getattr(mod, var_name)
+        try:
+            mod_name, var_name = self.value_conf.rsplit('.', 1)
+        except ValueError:
+            # to many values to unpack. no . in it.
+            return container.import_module(self.value_conf)
+        else:
+            mod = container.import_module(mod_name)
+            return getattr(mod, var_name)
 
 
 reference = ref = ReferenceResolver
