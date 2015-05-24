@@ -23,6 +23,8 @@ setup_args = {
     'long_description': open('README.rst', 'r').read(),
     'author': di.__author__,
     'author_email': di.__author_email__,
+    'maintainer': di.__maintainer__,
+    'maintainer_email': di.__maintainer_email__,
     'url': di.__website__,
     'py_modules': ['di'],
     'license': 'MIT',

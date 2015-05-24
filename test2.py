@@ -2,6 +2,7 @@
 
 from __future__ import absolute_import, unicode_literals
 
+import sys
 import mock
 
 try:
@@ -10,7 +11,7 @@ except ImportError:
     import unittest
 
 from di import DIContainer, DIConfig, rel, relation, RelationResolver, \
-    ref, reference, ReferenceResolver
+    ref, reference, ReferenceResolver, mod, module, ModuleResolver
 
 
 class TestConfigurationTestCase(unittest.TestCase):
@@ -56,6 +57,25 @@ class TestConfigurationTestCase(unittest.TestCase):
         self.assertEqual(patched_func.called,1)
         self.assertTrue(patched_func.called_with_args(['none_lazy']))
 
+    def test__register(self):
+        """
+        Passes if `runtime_config` is not configured and is configured at the
+        end of the test. the second registration raises an error.
+        """
+        container = DIContainer({})
+
+        def raises_not_registred():
+            container.resolve('runtime_config')
+
+        self.assertRaises(KeyError, raises_not_registred)
+        container.register('runtime_config', {'type': 'mock.MagicMock'})
+        runtime_config = container.resolve('runtime_config')
+        self.assertIsNotNone(runtime_config)
+
+        def raises_already_registred():
+            container.register('runtime_config', {'type': 'mock.MagicMock'})
+
+        self.assertRaises(KeyError, raises_already_registred)
 
 class TypeCreationTestCase(unittest.TestCase):
 
@@ -91,6 +111,17 @@ class TypeCreationTestCase(unittest.TestCase):
                 self.assertEqual(getattr(john, key), value)
             for key, value in john_config['properties'].items():
                 self.assertEqual(getattr(john, key), value)
+
+    def test__resolve_type(self):
+        """
+        Passes if resolve type returns the configured type for key a.
+        """
+        container = DIContainer({'a': {
+            'type': 'mock.Mock'
+        }})
+
+        resolved_type = container.resolve_type('a')
+        self.assertEqual(resolved_type, mock.Mock)
 
     def test__singleton(self):
         """
@@ -141,21 +172,65 @@ class TypeCreationTestCase(unittest.TestCase):
             container.resolve('no_type_implementation')
         self.assertRaises(TypeError, raises)
 
+    def test__assert_init_args(self):
+
+        mock_types = mock.Mock()
+        mock_types.ArgsCalledType = mock.Mock(name='ArgsCalledType')
+        mock_types.KWargsCalledType = mock.Mock(name='KWargsCalledType')
+        mock_types.MixedCalledType = mock.Mock(name='MixedCalledType')
+
+        sys.modules['mock_types'] = mock_types
+
+        args = [mock.Mock(), mock.Mock()]
+        kwargs = {'a': mock.Mock(), 'b': mock.Mock()}
+        mixed = {'': args}
+        mixed.update(kwargs)
+
+        container = DIContainer({
+            'args_instance': DIConfig(type='mock_types.ArgsCalledType', args=args),
+            'kwargs_instance': DIConfig(type='mock_types.KWargsCalledType', args=kwargs),
+            'mixed_instance': DIConfig(type='mock_types.MixedCalledType', args=mixed)
+        })
+
+        container.resolve('args_instance')
+        self.assertEqual(mock_types.ArgsCalledType.called, 1)
+        mock_types.ArgsCalledType.assert_called_with(*args)
+
+        container.resolve('kwargs_instance')
+        self.assertEqual(mock_types.KWargsCalledType.called, 1)
+        mock_types.KWargsCalledType.assert_called_with(**kwargs)
+
+        container.resolve('mixed_instance')
+        self.assertEqual(mock_types.MixedCalledType.called, 1)
+        mock_types.MixedCalledType.assert_called_with(*args, **kwargs)
+
+
+    @unittest.skip('Extend muss noch getestet werden.')
+    def test__extend_path(self):
+        pass
+
 
 class ResolverTestCase(unittest.TestCase):
 
     def test__relation_resolver(self):
-
+        """
+        Passes if the related configured instances becomes injectet into
+        the new created instance and set to it's property.
+        """
         def inner_test(setting):
 
             container = DIContainer({
-                'main_instance': DIConfig(type='mock.MagicMock', args={'referenced_instance': setting}),
+                'main_instance': DIConfig(
+                    type='mock.MagicMock',
+                    args={'referenced_instance_construct': setting},
+                    properties={'referenced_instance_property': setting}),
                 'referenced_instance': DIConfig(type='mock.MagicMock', singleton=True)
             })
 
             main = container.resolve('main_instance')
             referenced = container.resolve('referenced_instance')
-            self.assertEqual(main.referenced_instance, referenced)
+            self.assertEqual(main.referenced_instance_construct, referenced)
+            self.assertEqual(main.referenced_instance_property, referenced)
 
         for resolver_setting in (
                 'rel:referenced_instance',
@@ -169,11 +244,15 @@ class ResolverTestCase(unittest.TestCase):
 
         def inner_test(setting):
             container = DIContainer({
-                'main_instance': DIConfig(type='mock.MagicMock', args={'python_version': setting})
+                'main_instance': DIConfig(
+                    type='mock.MagicMock',
+                    args={'python_version_construct': setting},
+                    properties={'python_version_property': setting})
             })
 
             main = container.resolve('main_instance')
-            self.assertEqual(main.python_version, sys.version)
+            self.assertEqual(main.python_version_construct, sys.version)
+            self.assertEqual(main.python_version_property, sys.version)
 
         for reference_setting in (
                 'ref:sys.version',
@@ -181,3 +260,75 @@ class ResolverTestCase(unittest.TestCase):
                 reference('sys.version'),
                 ReferenceResolver('sys.version')):
             inner_test(reference_setting)
+
+    def test__module_resolver(self):
+
+        import json
+
+        def inner_test(setting):
+            container = DIContainer({
+                'test_instance': DIConfig(
+                    type='mock.MagicMock',
+                    args={'serializer_constructor': setting},
+                    properties={'serializer_property': setting})
+            })
+
+            instance = container.resolve('test_instance')
+            self.assertEqual(instance.serializer_constructor, json)
+            self.assertEqual(instance.serializer_property, json)
+
+        for module_setting in (
+                'mod:json',
+                mod('json'),
+                module('json'),
+                ModuleResolver('json')):
+            inner_test(module_setting)
+
+    def test__factory_resolver(self):
+
+        FACTORY_VALUE = mock.MagicMock()
+
+        def inner_test(setting):
+            container = DIContainer({
+                'instance': DIConfig(
+                    type='mock.MagicMock',
+                    args={'factory_value_constructor': setting},
+                    properties={'factory_value_property': setting})
+            })
+
+            instance = container.resolve('instance')
+            self.assertEqual(instance.factory_value_constructor, FACTORY_VALUE)
+            self.assertEqual(instance.factory_value_property, FACTORY_VALUE)
+
+        mock_module = mock.MagicMock()
+        mock_module.factory_method = lambda: FACTORY_VALUE
+
+        sys.modules['mock_module'] = mock_module
+
+        for factory_setting in ('factory:mock_module.factory_method', ):
+            inner_test(factory_setting)
+
+    def test__attribute_resolver(self):
+
+        ATTR_VALUE = mock.MagicMock()
+
+        def inner_test(setting):
+            container = DIContainer({
+                'instance': DIConfig(
+                    type='mock.MagicMock',
+                    args={'attr_value_constructor': setting},
+                    properties={'attr_value_property': setting})
+            })
+
+            instance = container.resolve('instance')
+            self.assertEqual(instance.attr_value_constructor, ATTR_VALUE)
+            self.assertEqual(instance.attr_value_property, ATTR_VALUE)
+
+        mock_module = mock.MagicMock()
+        mock_module.mock_instance = mock.MagicMock()
+        mock_module.mock_instance.mock_attribute = ATTR_VALUE
+
+        sys.modules['mock_module'] = mock_module
+
+        for attr_setting in ('attr:mock_module.mock_instance.mock_attribute', ):
+            inner_test(attr_setting)

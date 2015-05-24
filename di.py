@@ -21,7 +21,8 @@ __website__ = 'http://bitbucket.org/jblawatt/python-simple-di/'
 __author__ = 'Jens Blawatt'
 __author_email__ = 'jblawatt@googlemail.com'
 __author_website__ = 'http://www.blawatt.de/'
-
+__maintainer__ = __author__
+__maintainer_email__ = __author_email__
 
 _logger = logging.getLogger(__name__)
 
@@ -86,7 +87,7 @@ default_config = {
     'singleton': False,
     'lazy': True,
     'properties': {},
-    'assert_type': None
+    'assert_type': None,
 }
 
 
@@ -404,7 +405,7 @@ class DIContainer(object):
         register a new configuration at runtime.
 
         :param name: the name for the new configuration.
-        :type name: str
+        :type name: str, unicode
         :param settings: the sessings dictionary for the new type.
         :type settings: dict, di.DIConfig
         """
