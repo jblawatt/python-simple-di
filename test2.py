@@ -5,11 +5,7 @@ from __future__ import absolute_import, unicode_literals
 import os
 import sys
 import tempfile
-
-try:
-    from unittest import mock
-except:
-    import mock
+import mock
 
 try:
     import unittest2 as unittest
