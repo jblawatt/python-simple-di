@@ -15,6 +15,5 @@ clean:
 
 
 dist:
-	# /usr/bin/python2.6 setup.py sdist --formats=zip,gztar,bztar,ztar,tar
-	/usr/bin/python2.7 setup.py sdist --formats=zip,gztar,bztar,ztar,tar
-	/usr/bin/python3.3 setup.py sdist --formats=zip,gztar,bztar,ztar,tar
+	pythonenv/bin/python setup.py sdist --formats=zip,gztar,bztar,ztar,tar
+	pythonenv/bin/python setup.py bdist_wheel

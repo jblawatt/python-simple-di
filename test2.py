@@ -2,8 +2,14 @@
 
 from __future__ import absolute_import, unicode_literals
 
+import os
 import sys
-import mock
+import tempfile
+
+try:
+    from unittest import mock
+except:
+    import mock
 
 try:
     import unittest2 as unittest
@@ -76,6 +82,42 @@ class TestConfigurationTestCase(unittest.TestCase):
             container.register('runtime_config', {'type': 'mock.MagicMock'})
 
         self.assertRaises(KeyError, raises_already_registred)
+
+    def test__python_type(self):
+        """
+        Passes if a given python type also creates an instance.
+        :return:
+        """
+        container = DIContainer({
+            'a': DIConfig(type=mock.Mock)
+        })
+        self.assertIsInstance(container.a, mock.Mock)
+
+
+class EventDispatcherTestCase(unittest.TestCase):
+
+    def test__hooks_called(self):
+
+        # TODO: improve.
+
+        container = DIContainer({'a': DIConfig(
+            type='mock.Mock',
+            args={'': [mock.Mock()], 'b': mock.Mock()}
+        )}, event_dispatcher=mock.Mock())
+
+        container.resolve('a')
+        container.clear()
+        container.resolve_type('a')
+        container.register('b', DIConfig(type='mock.Mock'))
+
+        for method in ('initialized', 'before_register', 'after_register',
+                       'after_resolve', 'before_resolve', 'before_build_up',
+                       'after_build_up', 'before_resolve_type', 'after_resolve_type',
+                       'after_clear',):
+            self.assertTrue(
+                getattr(container.event_dispatcher, method).called,
+                'called method {0}.'.format(method))
+
 
 class TypeCreationTestCase(unittest.TestCase):
 
@@ -205,9 +247,21 @@ class TypeCreationTestCase(unittest.TestCase):
         mock_types.MixedCalledType.assert_called_with(*args, **kwargs)
 
 
-    @unittest.skip('Extend muss noch getestet werden.')
     def test__extend_path(self):
-        pass
+        tmp_file = tempfile.NamedTemporaryFile(suffix='.py', delete=False)
+        tmp_file.write('# coding: utf-8\nclass DynamicDummy(object):\n  pass')
+        tmp_file.close()
+        basename = os.path.basename(tmp_file.name)
+        filename, ext = os.path.splitext(basename)
+        container = DIContainer({
+            'dynamic': DIConfig(type='{0}:{1}.DynamicDummy'.format(tempfile.tempdir, filename))
+        })
+        instance = container.resolve('dynamic')
+        self.assertIsNotNone(instance)
+        module = sys.modules[filename]
+        self.assertIsInstance(instance, module.DynamicDummy)
+
+        os.remove(tmp_file.name)
 
 
 class ResolverTestCase(unittest.TestCase):
