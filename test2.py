@@ -244,8 +244,8 @@ class TypeCreationTestCase(unittest.TestCase):
 
 
     def test__extend_path(self):
-        tmp_file = tempfile.NamedTemporaryFile(suffix='.py', delete=False)
-        tmp_file.write('# coding: utf-8\nclass DynamicDummy(object):\n  pass')
+        tmp_file = tempfile.NamedTemporaryFile(mode='w+b', suffix='.py', delete=False)
+        tmp_file.write(bytes(b'# coding: utf-8\nclass DynamicDummy(object):\n  pass'))
         tmp_file.close()
         basename = os.path.basename(tmp_file.name)
         filename, ext = os.path.splitext(basename)
