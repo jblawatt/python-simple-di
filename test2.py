@@ -386,3 +386,21 @@ class ResolverTestCase(unittest.TestCase):
 
         for attr_setting in ('attr:mock_module.mock_instance.mock_attribute', ):
             inner_test(attr_setting)
+
+
+class InjectDecoratorTestCase(unittest.TestCase):
+
+    def test__inject(self):
+
+        container = DIContainer({'service': DIConfig(type=mock.Mock, singleton=True)})
+
+        @container.inject(service='service')
+        def some_function(data, service):
+            service.call_service_function(data)
+
+        some_function('data')
+        some_function(data='data', service=mock.Mock())
+        some_function('data', mock.Mock())
+
+        service = container.resolve('service')
+        self.assertEqual(service.call_service_function.called, 1)

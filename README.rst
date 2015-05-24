@@ -25,9 +25,10 @@ Configuration
 
 To configure the ``di.DIContainer`` you need to pass a ``dict`` with the needed configuration in it. Define the objects name as *key* to access it at runtime. The *value* needs to be the configuration to create the instance.
 
-- **type** *(required)*: This option defines the type with its complete python dotted path. You can add a python that will dynamicly become added to the ``sys.path`` if the instance is requested. *Examples:* ::
+- **type** *(required)*: This option defines the type with its complete python dotted path or the real python type. You can add a path that will dynamicly become added to the ``sys.path`` if the instance is requested. *Examples:* ::
 		
 	'type': 'path.to.my.Type'
+    'type': path.to.my.Type
 	# or
 	'type': '/add/to/sys/path:add.to.sys.path.Type'
 
@@ -39,11 +40,11 @@ To configure the ``di.DIContainer`` you need to pass a ``dict`` with the needed 
 	# or
 	'args': {'': [1, 'two'], 'three': 3}
 
-- **lazy** *(optional)*: This option defines weather the object will be created on runtime or will be created on container initialization. *Example:* ::
+- **lazy** *(optional)*: This option defines whether the instance will be created on runtime or will be created on container initialization. *Example:* ::
 	
 	'lazy': False # default: True
 
-- **singleton** *(optional, default: True)*: If this option is set to True, the created instance will become saved inside the container. Next time the same instance will be returned. If this value is set to False a new instance will be created every time.
+- **singleton** *(optional, default: True)*: If this option is set to `True`, the created instance will become saved inside the container. Next time the same instance will be returned. If this value is set to False a new instance will be created every time.
 
 - **properties** *(optional)*: This options works similar to the args option. After an instance was created a buildup is called. This buildup fills the given Properties with the given values.
 
@@ -54,6 +55,7 @@ To configure the ``di.DIContainer`` you need to pass a ``dict`` with the needed 
 
 Argument Resolvers
 __________________
+
 
 WILL FOLLOW...
 

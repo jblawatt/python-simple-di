@@ -12,8 +12,8 @@ test:
 clean:
 	find -name "*.pyc" -delete
 	find -name "*.*~" -delete
+	rm -rf python-simple-di-* env dist python_simple_di.egg-info htmlcov __pytcache__
 
 
 dist:
-	pythonenv/bin/python setup.py sdist --formats=zip,gztar,bztar,ztar,tar
-	pythonenv/bin/python setup.py bdist_wheel
+	pythonenv/bin/python setup.py build sdist bdist

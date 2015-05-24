@@ -3,6 +3,7 @@
 from __future__ import unicode_literals, absolute_import
 
 import sys
+import inspect
 import logging
 import warnings
 import functools
@@ -580,13 +581,26 @@ class DIContainer(object):
         :rtype: types.FunctionType
         """
         def wrapper(func):
+
             @functools.wraps(func)
             def inner(*args, **kwargs):
+
+                # if args are given we map the args to the kwargs to
+                # ensure wie set the right values.
+                if args:
+                    args_spec = inspect.getargspec(func)
+                    for i, arg_value in enumerate(args):
+                        kwargs[args_spec.args[i]] = arg_value
                 for key, name in inject_kwargs.items():
                     if force or key not in kwargs:
                         kwargs[key] = self.resolve(name)
-                return func(*args, **kwargs)
+                _logger.debug(
+                    'calling decorated function %s with %s.',
+                    func.__name__, kwargs)
+                return func(**kwargs)
+
             return inner
+
         return wrapper
 
 
