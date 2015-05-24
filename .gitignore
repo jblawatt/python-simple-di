@@ -15,3 +15,6 @@ build
 docs/build
 htmlcov
 .idea
+pythonenv
+.tox
+.coverage
