@@ -8,6 +8,9 @@ Python Simple DI
 
 ``python-simple-di`` is a dependency injection container implementation. With its help you can create instances and its dependencies on runtime.
 
+[![Build Status](https://drone.io/bitbucket.org/jblawatt/python-simple-di/status.png)](https://drone.io/bitbucket.org/jblawatt/python-simple-di/latest)
+
+
 Install
 -------
 
