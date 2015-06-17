@@ -11,6 +11,7 @@ import functools
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
 from copy import copy
+from lazy_object_proxy import Proxy
 
 __major__ = 1
 __minor__ = 5
@@ -428,7 +429,7 @@ class DIContainer(object):
         Resolves an object by its name assigned in the configuration.
 
         :param name: object's name in the configuration.
-        :type name: str, unicode
+        :type name: str|unicode
 
         :returns: object
         """
@@ -469,6 +470,18 @@ class DIContainer(object):
 
         return obj
 
+    def resolve_lazy(self, name):
+        """
+        Return an object proxy to the to lazy resolve requested instance.
+
+        :param name: object's name in the configuration.
+        :type name: str
+
+        :return: The proxy object to lazy access the instance.
+        :rtype: lazy_object_proxy.Proxy
+        """
+        return Proxy(lambda: self.resolve(name))
+
     def resolve_type(self, name):
         """
         Resolves a type for the given name in the configuration.
@@ -477,6 +490,7 @@ class DIContainer(object):
         :type name: str
 
         :returns: type
+        :rtype: type
         """
 
         self.event_dispatcher.before_resolve_type(name=name)
@@ -487,6 +501,18 @@ class DIContainer(object):
         self.event_dispatcher.after_resolve_type(name=name, type=type_)
 
         return type_
+
+    def resolve_type_lazy(self, name):
+        """
+        Lazy resolves a type for the given name in the configuration.
+
+        :param name: name of an object in the configuration.
+        :type name: str
+
+        :return: The proxy object to lazy access the type.
+        :rtype: lazy_object_proxy.Proxy
+        """
+        return Proxy(lambda: self.resolve_type(name))
 
     def build_up(self, name, instance, **overrides):
         """

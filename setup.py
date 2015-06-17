@@ -1,7 +1,10 @@
 # coding: utf-8
 
+from __future__ import absolute_import
+
 import di
 import sys
+
 from setuptools import setup
 
 
@@ -11,9 +14,14 @@ py3 = sys.version_info >= (3, 0)
 
 
 if py26:
-    install_requires = ['importlib']
+    install_requires = [
+        'lazy-object-proxy',
+        'importlib'
+    ]
 else:
-    install_requires = []
+    install_requires = [
+        'lazy-object-proxy',
+    ]
 
 
 setup_args = {

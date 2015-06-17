@@ -9,6 +9,9 @@ pythonenv:
 test:
 	pythonenv/bin/tox
 
+test-parallel:
+	pythonenv/bin/detox
+
 clean:
 	find -name "*.pyc" -delete
 	find -name "*.*~" -delete

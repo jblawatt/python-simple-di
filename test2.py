@@ -112,7 +112,7 @@ class EventDispatcherTestCase(unittest.TestCase):
                        'after_clear',):
             self.assertTrue(
                 getattr(container.event_dispatcher, method).called,
-                'called method {0}.'.format(method))
+                'method {0} not called.'.format(method))
 
 
 class TypeCreationTestCase(unittest.TestCase):
@@ -242,7 +242,6 @@ class TypeCreationTestCase(unittest.TestCase):
         self.assertEqual(mock_types.MixedCalledType.called, 1)
         mock_types.MixedCalledType.assert_called_with(*args, **kwargs)
 
-
     def test__extend_path(self):
         tmp_file = tempfile.NamedTemporaryFile(mode='w+b', suffix='.py', delete=False)
         tmp_file.write(bytes(b'# coding: utf-8\nclass DynamicDummy(object):\n  pass'))
@@ -254,11 +253,33 @@ class TypeCreationTestCase(unittest.TestCase):
         })
         instance = container.resolve('dynamic')
         self.assertIsNotNone(instance)
-        module = sys.modules[filename]
-        self.assertIsInstance(instance, module.DynamicDummy)
+        module_ = sys.modules[filename]
+        self.assertIsInstance(instance, module_.DynamicDummy)
 
         os.remove(tmp_file.name)
 
+    def test__resolve_lazy(self):
+        container = DIContainer({
+            'instance': DIConfig(
+                type='mock.MagicMock')
+        })
+        with mock.patch.object(container, 'resolve') as resolve_mock:
+            lazy_instance = container.resolve_lazy('instance')
+            self.assertFalse(resolve_mock.called)
+            lazy_instance.some_function()
+            self.assertTrue(resolve_mock.called)
+            resolve_mock.assert_called_with_args('instance')
+
+    def test__resove_lazy(self):
+        container = DIContainer({
+            'instance': DIConfig(
+                type='mock.MagicMock')
+        })
+        with mock.patch.object(container, 'resolve_type') as resolve_type_mock:
+            lazy_type = container.resolve_type_lazy('instance')
+            self.assertFalse(resolve_type_mock.called)
+            lazy_type()
+            self.assertTrue(resolve_type_mock.called)
 
 class ResolverTestCase(unittest.TestCase):
 
