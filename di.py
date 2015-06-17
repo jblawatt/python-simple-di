@@ -11,11 +11,10 @@ import functools
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
 from copy import copy
-from lazy_object_proxy import Proxy
 
 __major__ = 1
 __minor__ = 5
-__bugfix__ = 0
+__bugfix__ = 1
 
 __version__ = '%s.%s.%s' % (__major__, __minor__, __bugfix__)
 
@@ -480,6 +479,7 @@ class DIContainer(object):
         :return: The proxy object to lazy access the instance.
         :rtype: lazy_object_proxy.Proxy
         """
+        from lazy_object_proxy import Proxy
         return Proxy(lambda: self.resolve(name))
 
     def resolve_type(self, name):
@@ -512,6 +512,7 @@ class DIContainer(object):
         :return: The proxy object to lazy access the type.
         :rtype: lazy_object_proxy.Proxy
         """
+        from lazy_object_proxy import Proxy
         return Proxy(lambda: self.resolve_type(name))
 
     def build_up(self, name, instance, **overrides):
