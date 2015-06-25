@@ -10,11 +10,11 @@ Python Simple DI
 Install
 -------
 
-You can install it via ``pip``: ::
+You can install it via pip: ::
 
 	pip install python-simple-di
 
-or via ``easy_install``: ::
+or via easy_install: ::
 	
 	easy_install -U python-simple-di
 
@@ -28,7 +28,7 @@ Define the objects name as *key* to access it at runtime. The *value* needs to b
 - **type** *(required)*: This option defines the type with its complete python dotted path or the python type instance. You can add a path that will dynamicly become added to the ``sys.path`` if the instance is requested. *Examples:* ::
 
 .. code:: python
-
+    
 	'type': 'path.to.my.Type'
 	'type': path.to.my.Type
 	# or
@@ -37,7 +37,7 @@ Define the objects name as *key* to access it at runtime. The *value* needs to b
 - **args** *(optional)*: The args can either be a ``list`` of values to pass as Arguments or a ``dict`` to pass as Keyword Arguments. To mix both, you can define a dictionary with an empty string or None as key and a list as value. *Examples:* ::
 
 .. code:: python
-
+    
 	'args': ['first', 3, 'third']
 	# or 
 	'args': {'one': '1', 'two':'two'}
@@ -47,7 +47,7 @@ Define the objects name as *key* to access it at runtime. The *value* needs to b
 - **lazy** *(optional)*: This option defines whether the instance will be created on runtime or on container initialization. *Example:* ::
 
 .. code:: python
-
+    
 	'lazy': False # default: True
 
 - **singleton** *(optional, default: True)*: If this option is set to ``True``, the created instance will be saved inside the container. Next time the same instance will be returned. If this value is set to ``False`` a new instance will be created every time.
@@ -55,7 +55,7 @@ Define the objects name as *key* to access it at runtime. The *value* needs to b
 - **properties** *(optional)*: This option is similar to the ``args`` option. After an instance was created a buildup is called. This buildup fills the given properties with the given values in this dictionary. *Examples:* ::
 
 .. code:: python
-
+    
 	{
 		'type': 'some.Person',
 		'propeties': {
@@ -67,14 +67,14 @@ Define the objects name as *key* to access it at runtime. The *value* needs to b
 - **assert_type** *(optional)*: Checks weather the created type has the given base_type. ::
 
 .. code:: python
-
+    
 	'type': 'path.to.implementet.Type',
 	'assert_type': 'path.to.parent.Type'
 
 - **factory_method** *(optional)*: This options can be used to create an instance by a classmethod which creates the wanted instance. For example this can be used to create a class based views in django at runtime. *Example:* ::
 
 .. code:: python
-
+    
 	'type': 'myapp.views.ClassBasedView',
 	'factory_method': 'as_view'
 
@@ -93,7 +93,7 @@ The ReferenceResolver offers the possibility to an attribute within the python p
 *Example:* ::
 
 .. code:: python
-
+    
 	{
 		'args': {
 			'output_stream': ReferenceResolver('sys.stdout')
@@ -113,7 +113,7 @@ The RelationResolver allows the resolution of an object of this container at run
 *Example:* ::
 
 .. code:: python
-
+    
 	{
 		'object_a': {
 			'type': 'some.ClassName'
@@ -141,7 +141,7 @@ Sometimes it may be necessary to pass an entire module as a parameter. For this 
 *Example:* ::
 
 .. code:: python
-
+    
 	{
 		'type': 'some.ClassName',
 		'args': {
@@ -165,7 +165,7 @@ With the help of FactoryResolver the return value of a function as an argument c
 *Example.* ::
 
 .. code:: python
-
+    
 	{
 		'type': 'some.ClassName',
 		'args': [
@@ -188,7 +188,7 @@ With the Resolver an attribute of an instance can be passed as an argument. This
 *Example:* ::
 
 .. code:: python
-
+    
 	{
 		'type': 'some.ClassName':
 		'args': {
@@ -216,13 +216,13 @@ Usage
 Simply create a dictionary with your type configuration and pass it as settings argument to the ``DIContainer``. The Dictionarys key is the type key to resolve the instance.
 
 .. code:: python
-
+    
 	# create the container
 	container = DIContainer(config)
-
+    
 	# resolve the instance
 	instance = container.resolve('instance_key')
-
+    
 	# resolve the instance type only
 	type_of_instance_key = container.resolve_type('instance_key')
 
@@ -233,16 +233,16 @@ Resolve Lazy
 Sometimes it may be necessary to create an instance at its first useage. So there are the following two messages, that returns a ``di.Proxy`` instance at first.
 
 To use this Feature you need to provide a ``proxy_type_name`` and install the specific package for this. I recommend ``lazy-object-proxy`` with its type ``Proxy``. Which is the default value for this argument. It is not shipped with this package because of the many different other implementations and thier different licence.
-If you use this in combination with django you can use ``django.utils.functional.SimpleLazyObject``. **But moment the ``resolve_type_lazy`` is not working properly with ``SimpleLazyObject``.
+If you use this in combination with django you can use ``django.utils.functional.SimpleLazyObject``. **But at this moment the ``resolve_type_lazy`` is not working properly with ``SimpleLazyObject``.
 
 .. code:: python
-
+    
 	# create the container
 	container = DIContainer(config, proxy_type_name='lazy_object_proxy.Proxy')
-
+    
 	# lazy resolves the instance
 	instance = container.resolve_lazy('instance_key')
-
+    
 	# lazy resolves the instance type only
 	type_of_instance_key = container.resolve_type_lazy('instance_key')
 
@@ -255,7 +255,7 @@ If you need the same container but override some settings you can create a child
 This is the unittest that explains this function at its best.
 
 .. code:: python
-
+    
 	container = DIContainer({
 		'one': {
 			'type': 'mock.Mock',
@@ -270,10 +270,10 @@ This is the unittest that explains this function at its best.
 			}
 		}
 	})
-
+    
 	self.assertEqual(container.one.source, 'parent')
 	self.assertEqual(container.two.source, 'parent')
-
+    
 	child_container = container.create_child_container({
 		'two': {
 			'type': 'mock.Mock',
@@ -282,7 +282,7 @@ This is the unittest that explains this function at its best.
 			}
 		}
 	})
-
+    
 	self.assertEqual(child_container.one.source, 'parent')
 	self.assertEqual(child_container.two.source, 'child')
 	self.assertEqual(container.one.source, 'parent')
