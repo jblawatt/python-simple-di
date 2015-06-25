@@ -82,17 +82,32 @@ class DIEventDispatcher(object):
         pass
 
 
+class Proxy(object):
+    """
+    Will replaced with the real proxy instance
+    """
+
+    def __init__(self, factory_method):
+        raise NotImplementedError()
+
+
 default_config = {
+    'name': None,
     'type': None,
     'args': [],
     'singleton': False,
     'lazy': True,
     'properties': {},
     'assert_type': None,
+    'factory_method': None,
 }
 
 
-class DIConfig(namedtuple('DIConfig', default_config.keys())):
+class DIConfig(namedtuple('DIConfigBase', default_config.keys())):
+    """
+    This type is used for the internal configuration. Each configuraiton dict
+    becomes passed into an instance of this class.
+    """
 
     def __new__(cls, **kwargs):
         type_ = kwargs.get('type')
@@ -194,7 +209,7 @@ class DIContainer(object):
             if not isinstance(self.settings[key], DIConfig):
                 # create an instance of DIConfig for each config element.
                 # that makes it easier to work with it later.
-                self.settings[key] = DIConfig(**config)
+                self.settings[key] = DIConfig(name=key, **config)
                 _logger.debug('Created DIConfig for configuration key %s.', key)
 
         self.names = settings.keys()
@@ -228,6 +243,10 @@ class DIContainer(object):
                     'found non-lazy configuration %s. resovling it.', key)
                 self.resolve(key)
 
+        # set the proxy type name
+        self.proxy_type_name = kwargs.get(
+            'proxy_type_name', 'lazy_object_proxy.Proxy')
+
         self.event_dispatcher.initialized()
 
     def import_module(self, name, package=None):
@@ -251,7 +270,7 @@ class DIContainer(object):
         * /tmp/dir_with_module/:module.Person
 
         :param python_name: The full name of the type to reslove.
-        :type python_name: str
+        :type python_name: str|unicode
 
         :returns: type
         """
@@ -398,6 +417,24 @@ class DIContainer(object):
                 % (type_, expected, conf_name)
             )
 
+    def _get_proxy_type(self):
+        """
+        Returns the Proxy type, used for lazy resolving.
+
+        :return: The type used as Proxy.
+        :rtype: di.Proxy
+        """
+        try:
+            proxy_type = self._resolve_type(self.proxy_type_name)
+        except ImportError as e:
+            # We do not provide lazy-object-proxy because of different licences.
+            raise ImportError(
+                'got an error while importing the proxy type `%s`. '
+                'make sure you installed `lazy-object-proxy` or another '
+                'lazy object implementation. (i.e. django.utils.functional'
+                '.SimpleLazyObject).' % self.proxy_type_name)
+        return proxy_type
+
     # ---------------------------
     # public methods
     # ---------------------------
@@ -416,7 +453,7 @@ class DIContainer(object):
         if name in self.settings:
             raise KeyError('there is already a configuration with this name.')
         if isinstance(settings, dict):
-            conf = DIConfig(**settings)
+            conf = DIConfig(name=name, **settings)
         else:
             conf = settings
         self.settings[name] = conf
@@ -459,7 +496,10 @@ class DIContainer(object):
         _args, _kwargs = self._resolve_args(conf.args)
 
         # create the instance
-        obj = type_(*_args, **_kwargs)
+        if conf.factory_method:
+            obj = getattr(type_, conf.factory_method)(*_args, **_kwargs)
+        else:
+            obj = type_(*_args, **_kwargs)
         obj = self.build_up(name, obj)
 
         if singleton:
@@ -474,20 +514,20 @@ class DIContainer(object):
         Return an object proxy to the to lazy resolve requested instance.
 
         :param name: object's name in the configuration.
-        :type name: str
+        :type name: str|unicode
 
         :return: The proxy object to lazy access the instance.
-        :rtype: lazy_object_proxy.Proxy
+        :rtype: di.Proxy
         """
-        from lazy_object_proxy import Proxy
-        return Proxy(lambda: self.resolve(name))
+        proxy_type = self._get_proxy_type()
+        return proxy_type(lambda: self.resolve(name))
 
     def resolve_type(self, name):
         """
         Resolves a type for the given name in the configuration.
 
         :param name: name of an object in the configuration.
-        :type name: str
+        :type name: str|unicode
 
         :returns: type
         :rtype: type
@@ -507,13 +547,13 @@ class DIContainer(object):
         Lazy resolves a type for the given name in the configuration.
 
         :param name: name of an object in the configuration.
-        :type name: str
+        :type name: str|unicode
 
         :return: The proxy object to lazy access the type.
         :rtype: lazy_object_proxy.Proxy
         """
-        from lazy_object_proxy import Proxy
-        return Proxy(lambda: self.resolve_type(name))
+        proxy_type = self._get_proxy_type()
+        return proxy_type(lambda: self.resolve_type(name))
 
     def build_up(self, name, instance, **overrides):
         """
@@ -563,11 +603,14 @@ class DIContainer(object):
 
         self.event_dispatcher.after_clear(name=name)
 
-    def create_child_container(self, settings):
-        # TODO: Copy singleton reference into the child container
-        orig_settings = copy(self.settings)
-        orig_settings.update(settings)
-        return type(self)(orig_settings, parent=self)
+    def create_child_container(self, *args, **kwargs):
+        """
+        Creates a child container with the given Configuration
+        :returns: a new container instance on this type.
+        :rtype: di.DIContainer
+        """
+        kwargs['parent'] = self
+        return type(self)(*args, **kwargs)
 
     def __dir__(self):
         """
@@ -583,7 +626,7 @@ class DIContainer(object):
 
     def __getattr__(self, name):
         """
-        resolves the given name in this container.
+        Resolves the given name in this container.
 
         :param name: the key to resolve.
         :type name: str
@@ -592,6 +635,8 @@ class DIContainer(object):
         :rtype: object
         """
         if name not in self.settings:
+            if self.parent is not None:
+                return self.parent.resolve(name)
             raise AttributeError(
                 'no component named "%s". please adjust in settings.' % name)
         return self.resolve(name)
@@ -687,7 +732,7 @@ class RelationResolver(Resolver):
     def resolve(self, container):
         """
         :type container: di.DIContainer
-        :param container:
+        :param container: The Container Instance to lookup in.
         :rtype: object
         """
         return container.resolve(self.value_conf)
@@ -703,7 +748,7 @@ class ModuleResolver(Resolver):
     def resolve(self, container):
         """
         :type container: di.DIContainer
-        :param container:
+        :param container: The Container Instancze to resolve with.
         :rtype: object
         """
         return container.import_module(self.value_conf)
@@ -744,4 +789,4 @@ class AttributeResolver(Resolver):
         instance = ReferenceResolver(pre_conf).resolve(container)
         return getattr(instance, attr_name)
 
-attr = AttributeResolver
+attr = attribute = AttributeResolver

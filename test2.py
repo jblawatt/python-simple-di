@@ -150,6 +150,27 @@ class TypeCreationTestCase(unittest.TestCase):
             for key, value in john_config['properties'].items():
                 self.assertEqual(getattr(john, key), value)
 
+    def test__factory_method(self):
+
+        class TestClass:
+
+            @classmethod
+            def create(cls):
+                return cls()
+
+        container = DIContainer({'klass': {
+            'type': TestClass,
+            'factory_method': 'create'
+        }})
+
+        with mock.patch.object(TestClass, 'create') as mocked_fn:
+            mocked_fn.return_value = TestClass()
+            instance = container.resolve('klass')
+            self.assertIsNotNone(instance)
+            self.assertIsInstance(instance, TestClass)
+            self.assertTrue(mocked_fn.called)
+
+
     def test__resolve_type(self):
         """
         Passes if resolve type returns the configured type for key a.
@@ -270,7 +291,7 @@ class TypeCreationTestCase(unittest.TestCase):
             self.assertTrue(resolve_mock.called)
             resolve_mock.assert_called_with_args('instance')
 
-    def test__resove_lazy(self):
+    def test__resove_type_lazy(self):
         container = DIContainer({
             'instance': DIConfig(
                 type='mock.MagicMock')
@@ -280,6 +301,37 @@ class TypeCreationTestCase(unittest.TestCase):
             self.assertFalse(resolve_type_mock.called)
             lazy_type()
             self.assertTrue(resolve_type_mock.called)
+
+    def test__resolve_lazy_django(self):
+        container = DIContainer(
+            proxy_type_name='django.utils.functional.SimpleLazyObject',
+            settings={
+                'instance': DIConfig(
+                    type='mock.MagicMock')
+            }
+        )
+        with mock.patch.object(container, 'resolve') as resolve_mock:
+            lazy_instance = container.resolve_lazy('instance')
+            self.assertFalse(resolve_mock.called)
+            lazy_instance.some_function()
+            self.assertTrue(resolve_mock.called)
+            resolve_mock.assert_called_with_args('instance')
+
+    def test__resove_type_lazy_django(self):
+        container = DIContainer(
+            proxy_type_name='django.utils.functional.SimpleLazyObject',
+            settings={
+                'instance': DIConfig(
+                    type='mock.MagicMock')
+            }
+        )
+        with mock.patch.object(container, 'resolve_type') as resolve_type_mock:
+            lazy_type = container.resolve_type_lazy('instance')
+            self.assertFalse(resolve_type_mock.called)
+
+            # Simple Lazy Object in not able to do so...
+            self.assertRaises(Exception, lazy_type)
+
 
 class ResolverTestCase(unittest.TestCase):
 
@@ -408,7 +460,10 @@ class ResolverTestCase(unittest.TestCase):
 class InjectDecoratorTestCase(unittest.TestCase):
 
     def test__inject(self):
-
+        """
+        Passes if the instance with the key `service` becomes injected into
+        a dummy function.
+        """
         container = DIContainer({'service': DIConfig(type=mock.Mock, singleton=True)})
 
         @container.inject(service='service')
@@ -421,3 +476,41 @@ class InjectDecoratorTestCase(unittest.TestCase):
 
         service = container.resolve('service')
         self.assertEqual(service.call_service_function.called, 1)
+
+
+class ChildContainerTestCase(unittest.TestCase):
+
+    def test__child_container(self):
+
+        container = DIContainer({
+            'one': {
+                'type': 'mock.Mock',
+                'properties': {
+                    'source': 'parent'
+                }
+            },
+            'two': {
+                'type': 'mock.Mock',
+                'properties': {
+                    'source': 'parent'
+                }
+            }
+        })
+
+        self.assertEqual(container.one.source, 'parent')
+        self.assertEqual(container.two.source, 'parent')
+
+        child_container = container.create_child_container({
+            'two': {
+                'type': 'mock.Mock',
+                'properties': {
+                    'source': 'child'
+                }
+            }
+        })
+
+        self.assertEqual(child_container.one.source, 'parent')
+        self.assertEqual(child_container.two.source, 'child')
+        self.assertEqual(container.one.source, 'parent')
+        self.assertEqual(container.two.source, 'parent')
+

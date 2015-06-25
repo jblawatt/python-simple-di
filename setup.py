@@ -15,12 +15,10 @@ py3 = sys.version_info >= (3, 0)
 
 if py26:
     install_requires = [
-        'lazy-object-proxy',
         'importlib'
     ]
 else:
     install_requires = [
-        'lazy-object-proxy',
     ]
 
 
