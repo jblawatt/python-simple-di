@@ -46,6 +46,35 @@ class TestConfigurationTestCase(unittest.TestCase):
         for key, value in test_config.items():
             self.assertEqual(getattr(conf, key), value)
 
+    def tes__copy_config(self):
+        """
+        Passes if the settings variable becomes copies and changes do not
+        take effect.
+        :return:
+        """
+
+        conf = {
+            'a': {
+                'type': 'mock.Mock'
+            }
+        }
+
+        container = DIContainer(conf)
+
+        self.assertIn('a', container.settings)
+        self.assertNotIn('b', container.settings)
+        self.assertRaises(KeyError, lambda: container.resolve('b'))
+
+        conf['b'] = {
+            'type': 'mock.MagicMock'
+        }
+
+        self.assertIn('a', container.settings)
+        self.assertNotIn('b', container.settings)
+
+        self.assertIsNotNone(container.resolve('a'))
+        self.assertRaises(KeyError, lambda: container.resolve('b'))
+
     def test__create_non_lazy_instances(self):
         """
         Passes if resolve is called with the none_lazy key.
@@ -289,7 +318,7 @@ class TypeCreationTestCase(unittest.TestCase):
             self.assertFalse(resolve_mock.called)
             lazy_instance.some_function()
             self.assertTrue(resolve_mock.called)
-            resolve_mock.assert_called_with_args('instance')
+            resolve_mock.assert_called_with('instance')
 
     def test__resove_type_lazy(self):
         container = DIContainer({
@@ -315,7 +344,7 @@ class TypeCreationTestCase(unittest.TestCase):
             self.assertFalse(resolve_mock.called)
             lazy_instance.some_function()
             self.assertTrue(resolve_mock.called)
-            resolve_mock.assert_called_with_args('instance')
+            resolve_mock.assert_called_with('instance')
 
     def test__resove_type_lazy_django(self):
         container = DIContainer(

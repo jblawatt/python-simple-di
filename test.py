@@ -276,23 +276,23 @@ class DIContainerTestCase(unittest.TestCase):
             )
 
     def test_inject(self):
-        @self.manager.inject(person='henrik')
+        @self.manager.inject(person='jens')
         def to_inject_function(person=None):
             self.assertIsNotNone(person)
-            self.assertEqual(person.first_name, 'Henrik')
+            self.assertEqual(person.first_name, 'Jens')
 
         to_inject_function()
 
     def test_inject_force(self):
-        @self.manager.inject(force=True, person='henrik')
+        @self.manager.inject(force=True, person='jens')
         def to_inject_function(person=None):
             self.assertIsNotNone(person)
-            self.assertEqual(person.first_name, 'Henrik')
+            self.assertEqual(person.first_name, 'Jens')
 
         to_inject_function(person=self.manager.jens)
 
     def test_inject_noforce(self):
-        @self.manager.inject(force=False, person='henrik')
+        @self.manager.inject(force=False, person='jens')
         def to_inject_function(person=None):
             self.assertIsNotNone(person)
             self.assertEqual(person.first_name, 'Jens')

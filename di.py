@@ -14,7 +14,7 @@ from copy import copy
 
 __major__ = 1
 __minor__ = 5
-__bugfix__ = 1
+__bugfix__ = 2
 
 __version__ = '%s.%s.%s' % (__major__, __minor__, __bugfix__)
 
@@ -204,7 +204,7 @@ class DIContainer(object):
 
         self.event_dispatcher = dispatcher_type(container=self)
 
-        self.settings = settings
+        self.settings = settings.copy()
         for key, config in self.settings.items():
             if not isinstance(self.settings[key], DIConfig):
                 # create an instance of DIConfig for each config element.
