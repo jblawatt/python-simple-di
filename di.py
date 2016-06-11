@@ -543,11 +543,11 @@ class DIContainer(object):
             constructor kwargs.
         :type instance_kwargs: dict
         """
-        if isinstance(base_type, basestring):
+        if isinstance(base_type, string_types):
             base_type = self._resolve_type(base_type)
         for name, conf in self.settings.items():
             instance_type = conf.type
-            if isinstance(instance_type, basestring):
+            if isinstance(instance_type, string_types):
                 instance_type = self._resolve_type(instance_type)
             if issubclass(instance_type, base_type):
                 yield self.resolve(name, *instance_args, **instance_kwargs)
