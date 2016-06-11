@@ -1,4 +1,8 @@
 # coding: utf-8
+"""
+DEPRECATED: This testmodule is deprecated. please use the better structured
+test2.py. This file will be kept in order to test backwards compatibility.
+"""
 
 from __future__ import absolute_import
 
@@ -232,7 +236,7 @@ class DIContainerTestCase(unittest.TestCase):
 
     def test_register_registered(self):
         def fnc():
-            self.manager.register('jens', dict())
+            self.manager.register('jens', dict(type='mock.Mock'))
         self.assertRaises(KeyError, fnc)
 
     def test_clear_singleton(self):
