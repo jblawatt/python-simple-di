@@ -7,6 +7,9 @@ Python Simple DI
 *python-simple-di* is a simple dependency injection container implementation. With its help you can create instances and its dependencies on runtime.
 
 
+.. contents::
+
+
 Changes
 -------
 
