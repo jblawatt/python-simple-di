@@ -15,8 +15,7 @@ except ImportError:
 
 from di import DIContainer, DIConfig, rel, relation, RelationResolver, \
     ref, reference, ReferenceResolver, mod, module, ModuleResolver, \
-    DIConfigManager
-
+    DIConfigManager, MissingConfigurationError
 
 try:
     log_level = os.environ['DI_UNITTEST_LOGLEVEL']
@@ -35,7 +34,7 @@ else:
 
 
 class TestCaseExtras(object):
-    
+
     def assertIsSubclass(self, obj, cls, msg=None):
         if not issubclass(obj, cls):
             standardMsg = '%s is not a subclass of %r' % (safe_repr(obj), cls)
@@ -162,7 +161,7 @@ class TestConfigurationTestCase(TestCaseExtras, unittest.TestCase):
         Passes if `MyService` becomes registered with the given settings.
         """
         container = DIContainer({})
-        
+
         @container.register("my_service", settings=dict(properties={'foo': 'bar'}))
         class MyService(object):
             pass
@@ -176,7 +175,7 @@ class TestConfigurationTestCase(TestCaseExtras, unittest.TestCase):
         Passes if `MyService` becomes registered without providing settings.
         """
         container = DIContainer({})
-        
+
         @container.register("my_service")
         class MyService(object):
             pass
@@ -197,13 +196,13 @@ class TestConfigurationTestCase(TestCaseExtras, unittest.TestCase):
 
     def test__constructor_args(self):
         """
-        Passes if the registered type becomes constructed with the 
+        Passes if the registered type becomes constructed with the
         overriding args and kwargs.
         """
         mock_type = mock.Mock()
         container = DIContainer({
             'instance': {
-                'type': mock_type, 
+                'type': mock_type,
                 'args': {'arg1': 1, 'arg2': 'two'}
             }
         })
@@ -277,7 +276,7 @@ class TypeCreationTestCase(unittest.TestCase):
 
     def test__factory_method(self):
         """
-        Passes if the `TestClass` becomes created using the 
+        Passes if the `TestClass` becomes created using the
         classmethod `create`.
         """
         class TestClass:
@@ -698,7 +697,7 @@ class InjectDecoratorTestCase(TestCaseExtras, unittest.TestCase):
             self.assertEquals(calls, 2)
 
         some_function('data')
-        
+
 
 class ChildContainerTestCase(unittest.TestCase):
 
@@ -773,7 +772,7 @@ class ChildContainerTestCase(unittest.TestCase):
         }
 
         def inner_func():
-            return container.resolve("one")        
+            return container.resolve("one")
 
         tbc = inner_func()
         self.assertEquals(tbc.source, 'outer_context')
@@ -790,7 +789,7 @@ class ChildContainerTestCase(unittest.TestCase):
 
 
 class DIConfigManagerTestCase(unittest.TestCase):
-    
+
     def test__apply_context(self):
         c = DIConfigManager({'one': {'type': 'test.One'}})
         self.assertEqual(c['one'].type, 'test.One')
@@ -798,3 +797,24 @@ class DIConfigManagerTestCase(unittest.TestCase):
         self.assertEqual(c['one'].type, 'test.Two')
         c.reset_context()
         self.assertEqual(c['one'].type, 'test.One')
+
+
+class TestMissingConfigurationError(unittest.TestCase):
+
+    def test__raises_error_resolve(self):
+        container = DIContainer({})
+
+        def raises_error():
+            return container.resolve("not_exists")
+
+        self.assertRaises(MissingConfigurationError, raises_error)
+        self.assertRaises(KeyError, raises_error)
+
+    def test__raises_error_getattr(self):
+        container = DIContainer({})
+
+        def raises_error():
+            return container.not_exists
+
+        self.assertRaises(MissingConfigurationError, raises_error)
+        self.assertRaises(KeyError, raises_error)

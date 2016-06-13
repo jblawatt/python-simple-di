@@ -105,6 +105,16 @@ default_config = {
 }
 
 
+class MissingConfigurationError(KeyError, AttributeError):
+    """
+    Exception that will be raised if the asked Key is not configured.
+    """
+    def __init__(self, key):
+        super(MissingConfigurationError, self).__init__(
+            'No configuration named "%s". Please specify in '
+            'settings or register at runtime.' % key)
+
+
 class DIConfig(namedtuple('DIConfigBase', default_config.keys())):
     """
     This type is used for the internal configuration. Each configuraiton dict
@@ -171,7 +181,7 @@ class DIContainer(object):
         self.event_dispatcher = dispatcher_type(container=self)
 
         self.settings_type = kwargs.get('settings_type', DIConfigManager)
-        
+
         # If the given settings does not have the needed settings_type
         # wrap them with it.
         if isinstance(settings, self.settings_type):
@@ -417,14 +427,14 @@ class DIContainer(object):
         :type name: str, unicode
         :param settings: the sessings dictionary for the new type.
         :type settings: dict, di.DIConfig
-        :param replace: defines weather a existing configuration should be 
+        :param replace: defines weather a existing configuration should be
             replaced with this.
         :type replace: bool
         """
 
         self.event_dispatcher.before_register(name=name, settings=settings)
 
-        # check if this function is used as decorator. the indicator is, 
+        # check if this function is used as decorator. the indicator is,
         # calling the function with settings but without type even leave
         # settings empty.
         is_decorator = (settings is None or (isinstance(settings, dict) and 'type' not in settings))
@@ -474,23 +484,23 @@ class DIContainer(object):
             # load information to create the instance
             conf = self.settings[name]
         except KeyError:
-            # name could not ne found. let us try to 
+            # name could not ne found. let us try to
             # find it by it's aliasname.
             settings = self.settings
             settings_iter = (settings.items if py3 else settings.iteritems)
             for key, conf in settings_iter():
                 if name in conf.alias:
                     _logger.debug(
-                        "%s could not be found. found it as alias for %s.", 
+                        "%s could not be found. found it as alias for %s.",
                         name, key)
                     name = key
                     break
             else:
                 # no configuration with this name as alias could
                 # be found. so we reraise the origin exception.
-                raise
-            
-            # found the name for the given alias. so check if 
+                raise MissingConfigurationError(name)
+
+            # found the name for the given alias. so check if
             # there is a singleton instance for it.
             if name in self.singletons:
                 return self.singletons[name]
@@ -507,7 +517,7 @@ class DIContainer(object):
             expected_type = self._resolve_type(assert_type)
             self._check_type(name, type_, expected_type)
 
-        # check if we got some arguments to pass into the 
+        # check if we got some arguments to pass into the
         # new instance constructor.
         if instance_args or instance_kwargs:
             _args, _kwargs = (instance_args, instance_kwargs)
@@ -539,7 +549,7 @@ class DIContainer(object):
         :type base_type: str | type
         :param instance_args: arguments that should be passed as constructor args.
         :type instance_args: tuple
-        :param instance_kwargs: keyword arguments that should be passed as 
+        :param instance_kwargs: keyword arguments that should be passed as
             constructor kwargs.
         :type instance_kwargs: dict
         """
@@ -560,7 +570,7 @@ class DIContainer(object):
         :type base_type: str | type
         :param instance_args: arguments that should be passed as constructor args.
         :type instance_args: tuple
-        :param instance_kwargs: keyword arguments that should be passed as 
+        :param instance_kwargs: keyword arguments that should be passed as
             constructor kwargs.
         :type instance_kwargs: dict
         """
@@ -593,7 +603,16 @@ class DIContainer(object):
 
         self.event_dispatcher.before_resolve_type(name=name)
 
-        conf = self.settings[name]
+        try:
+            # try to resolve the configuration by name.
+            conf = self.settings[name]
+        except KeyError:
+            # if htere is a parent given, check if there is a configuration
+            # for this name. otherwise raise an exception.
+            if self.parent is not None:
+                return self.parent.resolve(name)
+            else:
+                raise MissingConfigurationError(name)
         type_ = self._resolve_type(conf.type)
 
         self.event_dispatcher.after_resolve_type(name=name, type=type_)
@@ -664,6 +683,7 @@ class DIContainer(object):
     def create_child_container(self, *args, **kwargs):
         """
         Creates a child container with the given Configuration
+
         :returns: a new container instance on this type.
         :rtype: di.DIContainer
         """
@@ -673,8 +693,11 @@ class DIContainer(object):
     @contextlib.contextmanager
     def context(self, settings):
         """
+        Use this container in a contextual block an replace / extend the
+        the settings for this.
 
         :param settings: Settings that will be used in this Context.
+        :type settings: dict
         """
         if not isinstance(settings, DIConfigManager):
             settings = DIConfigManager(settings)
@@ -684,7 +707,7 @@ class DIContainer(object):
 
     def __dir__(self):
         """
-        override the base dir and extend with the configuration names.
+        Override the base dir and extend with the configuration names.
 
         :returns: list of strings
         """
@@ -698,18 +721,31 @@ class DIContainer(object):
         """
         Resolves the given name in this container.
 
+        DEPRECATED: This method is deprecated and will be removed in 2.0.
+        Please use the method `resolve`.
+
         :param name: the key to resolve.
         :type name: str
 
         :returns: object
         :rtype: object
         """
-        if name not in self.settings:
+
+        warnings.warn(
+            "Resolving objects over __getattr__ is deprecated and will be "
+            "removed in 2.0. Please use the method `resolve` instead.",
+            DeprecationWarning)
+
+        try:
+            # try to resolve in this container.
+            return self.resolve(name)
+        except MissingConfigurationError as error:
+            # If this containers has a parent container lookup there
+            # or reraise the exception.
             if self.parent is not None:
                 return self.parent.resolve(name)
-            raise AttributeError(
-                'no component named "%s". please adjust in settings.' % name)
-        return self.resolve(name)
+            else:
+                raise error
 
     def _inject(self, resolve_method, force=False, **inject_kwargs):
         def wrapper(func):
@@ -760,6 +796,7 @@ class DIContainer(object):
         :rtype: types.FunctionType
         """
         return self._inject(self.resolve_many, force, **inject_kwargs)
+
 
 class Resolver(object):
 
