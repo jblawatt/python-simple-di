@@ -107,7 +107,7 @@ default_config = {
 
 class MissingConfigurationError(KeyError, AttributeError):
     """
-    Exception that will be raised if the asked Key is not configured.
+    Exception that will be raised if the requested key is not configured.
     """
     def __init__(self, key):
         super(MissingConfigurationError, self).__init__(
@@ -117,7 +117,7 @@ class MissingConfigurationError(KeyError, AttributeError):
 
 class DIConfig(namedtuple('DIConfigBase', default_config.keys())):
     """
-    This type is used for the internal configuration. Each configuraiton dict
+    This type is used for the internal configuration. Each configuration dict
     becomes passed into an instance of this class.
     """
 
@@ -133,7 +133,7 @@ class DIConfig(namedtuple('DIConfigBase', default_config.keys())):
 class DIConfigManager(dict):
     """
     This type is used for the internal wrapping of the settings dictionary
-    to control reading and temorarily delivering deviant settings for a name.
+    to control reading and temporarily delivering deviant settings for a name.
     """
     context_settings = None
 
