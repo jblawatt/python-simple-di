@@ -22,6 +22,7 @@ _____
 - **constructor/factory (kw)argument overridies**: resolve methods noch accepts args and kwargs that will can be used instead of args configurations.
 - **register decorator**: :code:`register` can be used as decorator now.
 - **use as contextmanager**: the container can be used as context manager to temporarily override settings in :code:`with` block.
+- **mixin support**: new options :code:`mixins` can container a list or a type of types that will be used to create the new type.
 
 1.5.2
 _____
