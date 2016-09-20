@@ -309,6 +309,28 @@ class TypeCreationTestCase(unittest.TestCase):
         resolved_type = container.resolve_type('a')
         self.assertEqual(resolved_type, mock.Mock)
 
+    def test__mixin(self):
+        """
+        Passes if the created instance is type of the basetype and the given mixins.
+        """
+
+        base_type = type(str("BaseType"), (object,), {})
+        mixin_type = type(str("MixinType"), (object,), {})
+
+        other_type = type(str("OtherType"), (object,), {})
+
+        container = DIContainer({'a': {
+            'type': base_type,
+            'mixins': (mixin_type, 'mock.Mock')
+        }})
+
+        a = container.resolve("a")
+
+        self.assertIsInstance(a, base_type)
+        self.assertIsInstance(a, mixin_type)
+        self.assertIsInstance(a, mock.Mock)
+        self.assertNotIsInstance(a, other_type)
+
     def test__singleton(self):
         """
         Passes if the singleton configuration works and the same instance
@@ -338,6 +360,23 @@ class TypeCreationTestCase(unittest.TestCase):
 
         self.assertNotEquals(first, second)
         self.assertNotIn('non_singleton', container.singletons)
+
+    def test__del_singleton_on_register(self):
+        """
+        Passes of the singletons instance becomes deleted on reregistering
+        the name and replace it.
+        """
+        type_conf = {
+            "type": "mock.Mock",
+            "singleton": True
+        }
+        container = DIContainer({
+            "test": type_conf
+        })
+        t = container.resolve("test")
+        self.assertTrue("test" in container.singletons)
+        container.register("test", type_conf, replace=True)
+        self.assertFalse("test" in container.singletons)
 
     def test__assert_type(self):
         """
@@ -459,6 +498,16 @@ class TypeCreationTestCase(unittest.TestCase):
             # Simple Lazy Object in not able to do so...
             self.assertRaises(Exception, lazy_type)
 
+    def test__proxy_type_import_error(self):
+        container = DIContainer(
+            proxy_type_name='does.not.Exists',
+            settings={
+                'instance': DIConfig(
+                    type='mock.MagicMock')
+            }
+        )
+        self.assertRaises(ImportError, lambda: container.resolve_lazy("instance"))
+
     def test__resolve_many(self):
 
         class Base(object):
@@ -485,6 +534,33 @@ class TypeCreationTestCase(unittest.TestCase):
             self.assertIsInstance(inst, Base)
             calls += 1
         self.assertEquals(calls, 2)
+
+    def test__resolve_many_lazy(self):
+
+        class Base(object):
+            pass
+
+        class One(Base):
+            pass
+
+        class Two(Base):
+            pass
+
+        class Three(object):
+            pass
+
+        container = DIContainer({
+            'one': {'type': One},
+            'two': {'type': Two},
+            'three': {'type': Three},
+        })
+
+        calls = 0
+        with mock.patch.object(container, 'resolve_many') as resolve_type_mock:
+            lazy_type = container.resolve_many_lazy(Base)
+            self.assertFalse(resolve_type_mock.called)
+            lazy_type()
+            self.assertTrue(resolve_type_mock.called)
 
 class ResolverTestCase(unittest.TestCase):
 
@@ -786,6 +862,35 @@ class ChildContainerTestCase(unittest.TestCase):
         tbc = inner_func()
         self.assertEquals(tbc.source, 'outer_context')
         self.assertEquals(tbc.injected.source, 'outer_context')
+
+    def test__parent_lookup(self):
+        """
+        Passes if ...
+        """
+        container = DIContainer({
+            'one': {
+                'type': 'mock.Mock',
+                'properties': {
+                    'from': 'parent'
+                }
+            }
+        })
+
+        context_settings = {
+            'two': {
+                'type': 'mock.Mock',
+                'properties': {
+                    'from': 'child'
+                }
+            }
+        }
+
+        with container.context(context_settings):
+            self.assertIsNotNone(container.resolve("one"))
+            self.assertIsNotNone(container.resolve_type("one"))
+
+        self.assertRaises(MissingConfigurationError, lambda: container.resolve("three"))
+        self.assertRaises(MissingConfigurationError, lambda: container.resolve_type("three"))
 
 
 class DIConfigManagerTestCase(unittest.TestCase):

@@ -3,6 +3,7 @@
 from __future__ import unicode_literals, absolute_import, print_function
 
 import sys
+import types
 import inspect
 import logging
 import warnings
@@ -101,7 +102,8 @@ default_config = {
     'properties': {},
     'assert_type': None,
     'factory_method': None,
-    'alias': []
+    'alias': [],
+    'mixins': []
 }
 
 
@@ -236,7 +238,7 @@ class DIContainer(object):
     # ---------------------------
     # private methods
     # ---------------------------
-    def _resolve_type(self, python_name):
+    def _resolve_type(self, python_name, mixins=None):
         """
         Resolves a type. The Parameter :code:`python_name` is the
         types full path python name.
@@ -247,7 +249,8 @@ class DIContainer(object):
 
         :param python_name: The full name of the type to reslove.
         :type python_name: str|unicode
-
+        :param mixins: tist or tuple of types to mixin.
+        :type mixins: list|tuple
         :returns: type
         """
 
@@ -255,6 +258,11 @@ class DIContainer(object):
         # and python_name
 
         _logger.debug('resolving type "%s."', python_name)
+
+
+        def _import(type_path, type_name):
+            mod = self.import_module(type_path)
+            return getattr(mod, type_name)
 
         if (py2 and isinstance(python_name, string_types)) or \
                 (py3 and isinstance(python_name, str)):
@@ -273,16 +281,28 @@ class DIContainer(object):
                 else:  # 2.x
                     type_path = '__builtin__'
                     type_name = python_name
-        else:
+            type_ = _import(type_path, type_name)
+        elif isinstance(python_name, (list, tuple)):
+            # FIXME: this is not covered. for what isit?
             if len(python_name) == 3:
                 path, type_path, type_name = python_name
                 if path not in sys.path:
                     sys.path.append(path)
             else:
                 type_path, type_name = python_name
+            type_ = _import(type_path, type_name)
+        else:
+            type_ = python_name
 
-        mod = self.import_module(type_path)
-        return getattr(mod, type_name)
+        if mixins:
+            mixed_types = map(self._resolve_type, mixins)
+            mixed_types = tuple(mixed_types)
+            type_ = type(
+                b"ComputedType",
+                mixed_types + (type_,), {})
+
+        return type_
+
 
     def _resolve_module_value(self, value_conf):
         """
@@ -505,10 +525,7 @@ class DIContainer(object):
             if name in self.singletons:
                 return self.singletons[name]
 
-        if isinstance(conf.type, string_types):
-            type_ = self._resolve_type(conf.type)
-        else:
-            type_ = conf.type
+        type_ = self._resolve_type(conf.type, mixins=conf.mixins)
 
         # assert weather the type implements the
         # configures basetype.
@@ -558,7 +575,7 @@ class DIContainer(object):
         for name, conf in self.settings.items():
             instance_type = conf.type
             if isinstance(instance_type, string_types):
-                instance_type = self._resolve_type(instance_type)
+                instance_type = self._resolve_type(instance_type, mixins=conf.mixins)
             if issubclass(instance_type, base_type):
                 yield self.resolve(name, *instance_args, **instance_kwargs)
 
@@ -575,7 +592,7 @@ class DIContainer(object):
         :type instance_kwargs: dict
         """
         proxy_type = self._get_proxy_type()
-        return proxy_type(lambda: self.resolve_many(base_type, *instance_args, **instance_kwargs))
+        return proxy_type(lambda: self.resolve_many(base_types, *instance_args, **instance_kwargs))
 
     def resolve_lazy(self, name, *instance_args, **instance_kwargs):
         """
@@ -613,7 +630,7 @@ class DIContainer(object):
                 return self.parent.resolve(name)
             else:
                 raise MissingConfigurationError(name)
-        type_ = self._resolve_type(conf.type)
+        type_ = self._resolve_type(conf.type, mixins=conf.mixins)
 
         self.event_dispatcher.after_resolve_type(name=name, type=type_)
 
