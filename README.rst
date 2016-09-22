@@ -101,6 +101,8 @@ Define the objects name as *key* to access it at runtime. The *value* needs to b
 	'type': 'myapp.views.ClassBasedView',
 	'factory_method': 'as_view'
 
+- **mixins** *(optional)*: This options allows you to mix the given types into the configured type to create complete new type.
+
 
 Argument Resolvers
 __________________
