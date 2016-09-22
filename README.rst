@@ -1,7 +1,7 @@
 Python Simple DI
 ================
 
-.. image:: https://drone.io/bitbucket.org/jblawatt/python-simple-di/status.png
+.. image:: https://travis-ci.org/jblawatt/python-simple-di.svg?branch=master
 .. image:: https://img.shields.io/pypi/v/python-simple-di.svg
 
 
