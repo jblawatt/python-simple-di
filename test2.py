@@ -147,13 +147,13 @@ class TestConfigurationTestCase(TestCaseExtras, unittest.TestCase):
         })
 
         inst = container.resolve("to_be_replaced")
-        self.assertEquals(inst.id, '123456789')
+        self.assertEqual(inst.id, '123456789')
 
         repl_config = {'type': 'mock.Mock', 'properties': {'id': '987654321'}}
         container.register("to_be_replaced", repl_config, True)
 
         inst = container.resolve("to_be_replaced")
-        self.assertEquals(inst.id, '987654321')
+        self.assertEqual(inst.id, '987654321')
 
 
     def test__register_decorator(self):
@@ -168,7 +168,7 @@ class TestConfigurationTestCase(TestCaseExtras, unittest.TestCase):
 
         result = container.resolve("my_service")
         self.assertIsNotNone(result)
-        self.assertEquals(result.foo, "bar")
+        self.assertEqual(result.foo, "bar")
 
     def test__register_without_settings(self):
         """
@@ -358,7 +358,7 @@ class TypeCreationTestCase(unittest.TestCase):
         first = container.resolve('non_singleton')
         second = container.resolve('non_singleton')
 
-        self.assertNotEquals(first, second)
+        self.assertNotEqual(first, second)
         self.assertNotIn('non_singleton', container.singletons)
 
     def test__del_singleton_on_register(self):
@@ -533,7 +533,7 @@ class TypeCreationTestCase(unittest.TestCase):
         for inst in container.resolve_many(Base):
             self.assertIsInstance(inst, Base)
             calls += 1
-        self.assertEquals(calls, 2)
+        self.assertEqual(calls, 2)
 
     def test__resolve_many_lazy(self):
 
@@ -715,9 +715,9 @@ class ResolverTestCase(unittest.TestCase):
         instance = container.resolve("alias_name")
         inject_rel = container.resolve("inject_rel")
         test_instance_type.assert_called_with("arg1", arg2="arg2", arg3=inject_rel)
-        self.assertEquals(instance.prop1, 'prop1')
-        self.assertEquals(instance.prop2, 'prop2')
-        self.assertEquals(instance.prop3, inject_rel)
+        self.assertEqual(instance.prop1, 'prop1')
+        self.assertEqual(instance.prop2, 'prop2')
+        self.assertEqual(instance.prop3, inject_rel)
 
 
 class InjectDecoratorTestCase(TestCaseExtras, unittest.TestCase):
@@ -770,7 +770,7 @@ class InjectDecoratorTestCase(TestCaseExtras, unittest.TestCase):
             for i in services:
                 self.assertIsSubclass(type(i), Base)
                 calls += 1
-            self.assertEquals(calls, 2)
+            self.assertEqual(calls, 2)
 
         some_function('data')
 
@@ -851,17 +851,17 @@ class ChildContainerTestCase(unittest.TestCase):
             return container.resolve("one")
 
         tbc = inner_func()
-        self.assertEquals(tbc.source, 'outer_context')
-        self.assertEquals(tbc.injected.source, 'outer_context')
+        self.assertEqual(tbc.source, 'outer_context')
+        self.assertEqual(tbc.injected.source, 'outer_context')
 
         with container.context(context_settings):
             context_tbc = inner_func()
-            self.assertEquals(context_tbc.source, 'inner_context')
-            self.assertEquals(context_tbc.injected.source, 'prelaced_context')
+            self.assertEqual(context_tbc.source, 'inner_context')
+            self.assertEqual(context_tbc.injected.source, 'prelaced_context')
 
         tbc = inner_func()
-        self.assertEquals(tbc.source, 'outer_context')
-        self.assertEquals(tbc.injected.source, 'outer_context')
+        self.assertEqual(tbc.source, 'outer_context')
+        self.assertEqual(tbc.injected.source, 'outer_context')
 
     def test__parent_lookup(self):
         """
@@ -923,3 +923,4 @@ class TestMissingConfigurationError(unittest.TestCase):
 
         self.assertRaises(MissingConfigurationError, raises_error)
         self.assertRaises(KeyError, raises_error)
+

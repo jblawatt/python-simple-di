@@ -298,7 +298,7 @@ class DIContainer(object):
             mixed_types = map(self._resolve_type, mixins)
             mixed_types = tuple(mixed_types)
             type_ = type(
-                b"ComputedType",
+                str("ComputedType"),
                 mixed_types + (type_,), {})
 
         return type_
