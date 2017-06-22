@@ -8,6 +8,8 @@ import tempfile
 import mock
 import logging
 
+import di
+
 try:
     import unittest2 as unittest
 except ImportError:
@@ -923,4 +925,44 @@ class TestMissingConfigurationError(unittest.TestCase):
 
         self.assertRaises(MissingConfigurationError, raises_error)
         self.assertRaises(KeyError, raises_error)
+
+
+class TestInjectDecoratorTestCase(unittest.TestCase):
+
+    def test__inject_decorator(self):
+
+        class TestClass1(object):
+            @di.inject(tc2="test_class_2")
+            def __init__(self, tc2):
+                self.tc2 = tc2
+
+        class TestClass2(object):
+            pass
+
+        class TestClass2Alternative(object):
+            pass
+
+        @di.inject(tc__2="test_class_2")
+        def test_func_nameinject(tc__2):
+            return tc__2
+
+        @di.inject(tc__2=TestClass2)
+        def test_func_typeinject(tc__2):
+            return tc__2
+
+        container = DIContainer({
+            'test_class_1': {'type': TestClass1},
+            'test_class_2': {'type': TestClass2, 'properties': {'foo': 'bar'}},
+        })
+
+        di.set_default_container(container)
+
+        self.assertIsNotNone(di._DEFAULT_CONTAINER)
+
+        tc1 = container.resolve("test_class_1")
+
+        self.assertIsInstance(tc1.tc2, TestClass2)
+        self.assertEqual(tc1.tc2.foo, 'bar')
+        self.assertIsInstance(test_func_nameinject(), TestClass2)
+        self.assertIsInstance(test_func_typeinject(), TestClass2)
 

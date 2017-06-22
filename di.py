@@ -3,7 +3,6 @@
 from __future__ import unicode_literals, absolute_import, print_function
 
 import sys
-import types
 import inspect
 import logging
 import warnings
@@ -15,7 +14,7 @@ from collections import namedtuple
 from copy import copy
 
 __major__ = 1
-__minor__ = 6
+__minor__ = 7
 __bugfix__ = 0
 
 __version__ = '%s.%s.%s' % (__major__, __minor__, __bugfix__)
@@ -227,7 +226,8 @@ class DIContainer(object):
 
         self.event_dispatcher.initialized()
 
-    def import_module(self, name, package=None):
+    @staticmethod
+    def import_module(name, package=None):
         """
         Internal method to wrap the import_module function.
         """
@@ -494,6 +494,16 @@ class DIContainer(object):
         """
 
         self.event_dispatcher.before_resolve(name=name)
+
+        # if there is no string provided as name di will try to
+        # resolve the first configured instance with the given type.
+        if not isinstance(name, string_types):
+            for obj in self.resolve_many(name,
+                                         *instance_args,
+                                         **instance_kwargs):
+                return obj
+            else:
+                raise MissingConfigurationError(str(name))
 
         # check if there already is a singleton instance
         # for this name
@@ -929,3 +939,58 @@ class AttributeResolver(Resolver):
         return getattr(instance, attr_name)
 
 attr = attribute = AttributeResolver
+
+
+_DEFAULT_CONTAINER = None
+
+
+def set_default_container(container):
+    """
+    Sets the default container. Will be used for unbound decorators
+    like `inject` if there is no special container provided.
+    """
+    global _DEFAULT_CONTAINER
+    if isinstance(container, string_types):
+        module_path, var_name = container.rsplit(".", 1)
+        module = DIContainer.import_module(module_path)
+        container = getattr(module, var_name)
+    _DEFAULT_CONTAINER = container
+
+
+def inject(__container=None, **inject_kwargs):
+    """
+    A decorator to inject in dependency and to ensure a
+    loose coupling to the used container.
+
+    The container can be applied via `__container`.
+    Otherwise the default container, provided by `set_default_container`
+    will be used.
+
+    :param __container: None for default container, callable for callback
+    to lazyload a specific container or container instance.
+
+    :param inject_kwargs: Keyword arguments to specify the instances to inject.
+    """
+
+    def wrapper(func):
+
+        @functools.wraps(func)
+        def inner_func(*a, **kw):
+            if __container is None:
+                container = _DEFAULT_CONTAINER
+            elif callable(__container):
+                container = __container()
+            else:
+                container = __container
+            if container is None:
+                raise RuntimeError(
+                    "Neither a special ('__container') nor a default container "
+                    "(di.set_default_container) was specified."
+                )
+            return container.inject(**inject_kwargs)(func)(*a, **kw)
+
+        return inner_func
+
+    return wrapper
+
+
