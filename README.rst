@@ -14,9 +14,13 @@ Python Simple DI
 Changes
 -------
 
+1.7.0
+_____
+- Loosely coupled `inject` and `inject_many` decorator.
+- `resolve` also accepts a type as parameter `name` and will return the first instance subclassing that type (first result of `resolve_many`).
+
 1.6.0
 _____
-
 - **resolve many**: the new methods `resolve_many` and `resolve_many_lazy` gives you the possibility to resolve multiple objects depending on their class.
 - **alias names**: you can provide a list of alias names within the object configuration.
 - **constructor/factory (kw)argument overridies**: resolve methods noch accepts args and kwargs that will can be used instead of args configurations.
@@ -26,7 +30,6 @@ _____
 
 1.5.2
 _____
-
 - copy settings in DIContainer.__init__.
 
 

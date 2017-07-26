@@ -495,12 +495,11 @@ class DIContainer(object):
 
         self.event_dispatcher.before_resolve(name=name)
 
-        # if there is no string provided as name di will try to
+        # if there is no string provided as name, di will try to
         # resolve the first configured instance with the given type.
         if not isinstance(name, string_types):
-            for obj in self.resolve_many(name,
-                                         *instance_args,
-                                         **instance_kwargs):
+            for obj in self.resolve_many(
+                name, *instance_args, **instance_kwargs):
                 return obj
             else:
                 raise MissingConfigurationError(str(name))
@@ -957,40 +956,54 @@ def set_default_container(container):
     _DEFAULT_CONTAINER = container
 
 
-def inject(__container=None, **inject_kwargs):
-    """
-    A decorator to inject in dependency and to ensure a
-    loose coupling to the used container.
+def _default_container():
+    global _DEFAULT_CONTAINER
+    return _DEFAULT_CONTAINER
 
-    The container can be applied via `__container`.
-    Otherwise the default container, provided by `set_default_container`
-    will be used.
 
-    :param __container: None for default container, callable for callback
-    to lazyload a specific container or container instance.
+class InjectDecoratorBase(object):
 
-    :param inject_kwargs: Keyword arguments to specify the instances to inject.
-    """
+    inject_method = None
 
-    def wrapper(func):
+    def __init__(self, __container=None, **inject_kwargs):
+        """
+        A decorator to inject in dependency and to ensure a
+        loose coupling to the used container.
+
+        The container can be applied via `__container`.
+        Otherwise the default container, provided by `set_default_container`
+        will be used.
+
+        :param __container: None for default container, callable for callback
+        to lazyload a specific container or container instance.
+
+        :param inject_kwargs: Keyword arguments to specify the instances to inject.
+        """
+        self._inject_kwargs = inject_kwargs
+        self._container = __container
+
+    def __call__(self, func):
 
         @functools.wraps(func)
         def inner_func(*a, **kw):
-            if __container is None:
-                container = _DEFAULT_CONTAINER
-            elif callable(__container):
-                container = __container()
+            if self._container is None:
+                container = _default_container()
+            elif callable(self._container):
+                container = self._container()
             else:
-                container = __container
+                container = self._container
             if container is None:
                 raise RuntimeError(
                     "Neither a special ('__container') nor a default container "
                     "(di.set_default_container) was specified."
                 )
-            return container.inject(**inject_kwargs)(func)(*a, **kw)
+            inject_method = getattr(container, self.inject_method)
+            return inject_method(**self._inject_kwargs)(func)(*a, **kw)
 
         return inner_func
 
-    return wrapper
+class inject(InjectDecoratorBase):
+    inject_method = "inject"
 
-
+class inject_many(InjectDecoratorBase):
+    inject_method = "inject_many"

@@ -966,3 +966,48 @@ class TestInjectDecoratorTestCase(unittest.TestCase):
         self.assertIsInstance(test_func_nameinject(), TestClass2)
         self.assertIsInstance(test_func_typeinject(), TestClass2)
 
+    def test__inject_many_decorator(self):
+
+        class TestClassBase(object):
+            pass
+
+        class TestClass1(TestClassBase):
+            pass
+
+        class TestClass2(TestClassBase):
+            pass
+
+        @di.inject_many(tcb=TestClassBase)
+        def test_inject_many(tcb):
+            return tcb
+
+        container = DIContainer({
+            'test_class_1': {'type': TestClass1},
+            'test_class_2': {'type': TestClass2},
+        })
+
+        di.set_default_container(container)
+
+        self.assertIsNotNone(di._DEFAULT_CONTAINER)
+
+        result = test_inject_many()
+        result = list(result)
+        self.assertEqual(len(result), 2)
+        self.assertIsInstance(result[0], TestClass1)
+        self.assertIsInstance(result[1], TestClass2)
+
+
+class TestResolveByType(unittest.TestCase):
+
+    def test__resolve_type(self):
+        class TestType(object):
+            value = None
+
+        container = DIContainer({
+            'test1': {'type': TestType, 'properties': {'value': 1}},
+            'test2': {'type': TestType, 'properties': {'value': 2}},
+        })
+
+        instance = container.resolve(TestType)
+        self.assertIsInstance(instance, TestType)
+        self.assertEqual(instance.value, 1)

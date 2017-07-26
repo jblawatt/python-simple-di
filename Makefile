@@ -15,7 +15,7 @@ test-parallel:
 clean:
 	find -name "*.pyc" -delete
 	find -name "*.*~" -delete
-	rm -rf python-simple-di-* env dist python_simple_di.egg-info htmlcov __pytcache__
+	rm -rf python-simple-di-* env dist python_simple_di.egg-info htmlcov __pycache__
 
 
 dist:
