@@ -10,7 +10,7 @@ import functools
 import contextlib
 
 from abc import ABCMeta, abstractmethod
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 from copy import copy
 
 __major__ = 1
@@ -139,7 +139,7 @@ class DIConfigManager(dict):
     context_settings = None
 
     def __init__(self, settings_dict):
-        settings = settings_dict.copy()
+        settings = OrderedDict(settings_dict.copy())
         for key, config in settings.items():
             if not isinstance(settings[key], DIConfig):
                 # create an instance of DIConfig for each config element.

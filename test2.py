@@ -10,6 +10,8 @@ import logging
 
 import di
 
+from collections import OrderedDict
+
 try:
     import unittest2 as unittest
 except ImportError:
@@ -950,10 +952,10 @@ class TestInjectDecoratorTestCase(unittest.TestCase):
         def test_func_typeinject(tc__2):
             return tc__2
 
-        container = DIContainer({
+        container = DIContainer(OrderedDict({
             'test_class_1': {'type': TestClass1},
             'test_class_2': {'type': TestClass2, 'properties': {'foo': 'bar'}},
-        })
+        }))
 
         di.set_default_container(container)
 
@@ -981,10 +983,11 @@ class TestInjectDecoratorTestCase(unittest.TestCase):
         def test_inject_many(tcb):
             return tcb
 
-        container = DIContainer({
-            'test_class_1': {'type': TestClass1},
-            'test_class_2': {'type': TestClass2},
-        })
+        conf = OrderedDict()
+        conf['test_class_1'] = {'type': TestClass1}
+        conf['test_class_2'] = {'type': TestClass2}
+
+        container = DIContainer(conf)
 
         di.set_default_container(container)
 
@@ -993,8 +996,9 @@ class TestInjectDecoratorTestCase(unittest.TestCase):
         result = test_inject_many()
         result = list(result)
         self.assertEqual(len(result), 2)
-        self.assertIsInstance(result[0], TestClass1)
-        self.assertIsInstance(result[1], TestClass2)
+
+        for r in result:
+            self.assertIsInstance(r, (TestClass1, TestClass2))
 
 
 class TestResolveByType(unittest.TestCase):
@@ -1003,11 +1007,11 @@ class TestResolveByType(unittest.TestCase):
         class TestType(object):
             value = None
 
-        container = DIContainer({
-            'test1': {'type': TestType, 'properties': {'value': 1}},
-            'test2': {'type': TestType, 'properties': {'value': 2}},
-        })
+        conf = OrderedDict()
+        conf['test1'] = {'type': TestType, 'properties': {'value': 1}}
+        conf['test2'] = {'type': TestType, 'properties': {'value': 2}}
+        container = DIContainer(conf)
 
         instance = container.resolve(TestType)
         self.assertIsInstance(instance, TestType)
-        self.assertEqual(instance.value, 1)
+        self.assertIn(instance.value, (1, 2,))

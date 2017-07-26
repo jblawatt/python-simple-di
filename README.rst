@@ -16,8 +16,8 @@ Changes
 
 1.7.0
 _____
-- Loosely coupled `inject` and `inject_many` decorator.
-- `resolve` also accepts a type as parameter `name` and will return the first instance subclassing that type (first result of `resolve_many`).
+- Loosely coupled `inject` and `inject_many` decorator. (WARNING: `inject_many` uses `resolve_many` that makes use of the unsorted `items` dict-method. So there is no garanty that the first instance is the first registered instance.)
+- `resolve` also accepts a type as parameter `name` and will return the first instance subclassing that type (first result of `resolve_many`). (WARNING: `resolve_many` that makes use of the unsorted `items` dict-method. So there is no garanty that the first instance is the first registered instance.)
 
 1.6.0
 _____
