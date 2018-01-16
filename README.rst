@@ -16,17 +16,17 @@ Changes
 
 1.7.0
 _____
-- Loosely coupled `inject` and `inject_many` decorator. (WARNING: `inject_many` uses `resolve_many` that makes use of the unsorted `items` dict-method. So there is no garanty that the first instance is the first registered instance.)
-- `resolve` also accepts a type as parameter `name` and will return the first instance subclassing that type (first result of `resolve_many`). (WARNING: `resolve_many` that makes use of the unsorted `items` dict-method. So there is no garanty that the first instance is the first registered instance.)
+- Loosely coupled `inject` and `inject_many` decorator. (WARNING: `inject_many` uses `resolve_many` that makes use of the unsorted `items` dict-method. So there is no guarantee that the first instance will be the first registered instance.)
+- `resolve` also accepts a type as parameter `name` and will return the first instance subclassing that type (first result of `resolve_many`). (WARNING: `resolve_many` makes use of the unsorted `items` dict-method. So there is no guarantee that the first instance will be the first registered instance.)
 
 1.6.0
 _____
 - **resolve many**: the new methods `resolve_many` and `resolve_many_lazy` gives you the possibility to resolve multiple objects depending on their class.
 - **alias names**: you can provide a list of alias names within the object configuration.
-- **constructor/factory (kw)argument overridies**: resolve methods noch accepts args and kwargs that will can be used instead of args configurations.
+- **constructor/factory (kw)argument overridies**: resolve methods accepts args and kwargs that will be used instead of args configurations.
 - **register decorator**: :code:`register` can be used as decorator now.
-- **use as contextmanager**: the container can be used as context manager to temporarily override settings in :code:`with` block.
-- **mixin support**: new options :code:`mixins` can container a list or a type of types that will be used to create the new type.
+- **use as contextmanager**: the container can be used as a context manager to temporarily override settings in :code:`with` block.
+- **mixin support**: new option :code:`mixins` can contain a list or a type of types that will be used to create the new type.
 
 1.5.2
 _____
@@ -48,10 +48,10 @@ or via easy_install: ::
 Configuration
 -------------
 
-To configure the ``di.DIContainer`` you need to pass a dict with the needed configuration in it. Alternativly you can use an instance of ``di.DIConfig`` which is used internal anyway.
-Define the objects name as *key* to access it at runtime. The *value* needs to be the configuration to create the instance.
+To configure the ``di.DIContainer`` you need to pass a dict with the needed configuration in it. Alternatively you can use an instance of ``di.DIConfig`` which is used internal anyway.
+Define the object's name as *key* to access it at runtime. The *value* needs to be the configuration to create the instance.
 
-- **type** *(required)*: This option defines the type with its complete python dotted path or the python type instance. You can add a path that will dynamicly become added to the ``sys.path`` if the instance is requested. *Examples:*
+- **type** *(required)*: This option defines the type with its complete python dotted path or the python type instance. You can prepend a filesystem path that will dynamically be added to the ``sys.path`` if the instance is requested. *Examples:*
 
 .. code-block:: python
 
@@ -60,7 +60,7 @@ Define the objects name as *key* to access it at runtime. The *value* needs to b
 	# or
 	'type': '/add/to/sys/path:add.to.sys.path.Type'
 
-- **args** *(optional)*: The args can either be a ``list`` of values to pass as Arguments or a ``dict`` to pass as Keyword Arguments. To mix both, you can define a dictionary with an empty string or None as key and a list as value. *Examples:*
+- **args** *(optional)*: The args can either be a ``list`` of values to pass as arguments or a ``dict`` to pass as keyword arguments. To mix both, you can define a dictionary with an empty string or None as key and a list as value. *Examples:*
 
 .. code:: python
 
@@ -90,21 +90,21 @@ Define the objects name as *key* to access it at runtime. The *value* needs to b
 		}
 	}
 
-- **assert_type** *(optional)*: Checks weather the created type has the given base_type.
+- **assert_type** *(optional)*: Checks whether the created type has the given base_type.
 
 .. code:: python
 
-	'type': 'path.to.implementet.Type',
+	'type': 'path.to.implemented.Type',
 	'assert_type': 'path.to.parent.Type'
 
-- **factory_method** *(optional)*: This options can be used to create an instance by a classmethod which creates the wanted instance. For example this can be used to create a class based views in django at runtime. *Example:*
+- **factory_method** *(optional)*: This option can be used to create an instance by a classmethod which creates the wanted instance. For example this can be used to create class based views in django at runtime. *Example:*
 
 .. code:: python
 
 	'type': 'myapp.views.ClassBasedView',
 	'factory_method': 'as_view'
 
-- **mixins** *(optional)*: This options allows you to mix the given types into the configured type to create complete new type.
+- **mixins** *(optional)*: This option allows you to mix the given types into the configured type to create new type.
 
 
 Argument Resolvers
@@ -112,11 +112,11 @@ __________________
 
 With the help of the resolver the magic comes into play. Thanks to this small classes it is possible to trigger the dependencies of a type at runtime.
 
-The following resolver be brought by the default package. Individual resolver can be implemented by extending the base class ``di.Resolver``.
+The following resolvers are included in the default package. Individual resolvers can be implemented by extending the base class ``di.Resolver``.
 
 ReferenceResolver
 .................
-The ReferenceResolver offers the possibility to an attribute within the python path to refer. This must be the path and the object, as a Python dotted path.
+The ReferenceResolver offers the possibility to resolve an attribute within the python path to refer. This must be the path of the object as a python dotted path.
 
 *Example:*
 
@@ -132,7 +132,7 @@ The ReferenceResolver offers the possibility to an attribute within the python p
 
 - ``di.ref('sys.stdout')`` as shortcut for type.
 - ``di.reference('sys.stdout')`` as shortcut for the type.
-- ``'ref:sys.stdout'`` as prefix of the configured type to lazy use the resolver.
+- ``'ref:sys.stdout'`` as prefix of the configured type to use the resolver lazily.
 
 RelationResolver
 ................
@@ -159,12 +159,12 @@ The RelationResolver allows the resolution of an object of this container at run
 
 - ``di.rel('object_a')`` as shortcut for type.
 - ``di.relation('object_a')`` as shortcut for the type.
-- ``'rel:object_a'`` as prefix of the configured type to lazy use the resolver.
+- ``'rel:object_a'`` as prefix of the configured type to use the resolver lazily.
 
 ModuleResover
 .............
 
-Sometimes it may be necessary to pass an entire module as a parameter. For this purpose the ModuleResolver available.
+Sometimes it may be necessary to pass an entire module as a parameter. For this purpose the ModuleResolver is available.
 
 *Example:*
 
