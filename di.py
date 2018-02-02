@@ -902,7 +902,7 @@ class ReferenceResolver(Resolver):
 
 reference = ref = ReferenceResolver
 reference_lazy = ref_lazy = ReferenceResolverLazy = \
-    type('ReferenceResolverLazy', (LazyResolverMixin, ReferenceResolver), {})
+    type(str('ReferenceResolverLazy'), (LazyResolverMixin, ReferenceResolver), {})
 
 
 class RelationResolver(Resolver):
@@ -920,7 +920,7 @@ class RelationResolver(Resolver):
 
 relation = rel = RelationResolver
 relation_lazy = rel_lazy = RelationResolverLazy = \
-    type('RelationResolverLazy', (LazyResolverMixin, RelationResolver), {})
+    type(str('RelationResolverLazy'), (LazyResolverMixin, RelationResolver), {})
 
 
 class ModuleResolver(Resolver):
@@ -938,7 +938,7 @@ class ModuleResolver(Resolver):
 
 module = mod = ModuleResolver
 module_lazy = mod_lazy = ModuleResolverLazy = \
-    type('ModuleResolverLazy', (LazyResolverMixin, ModuleResolver), {})
+    type(str('ModuleResolverLazy'), (LazyResolverMixin, ModuleResolver), {})
 
 
 class FactoryResolver(Resolver):
@@ -958,7 +958,7 @@ class FactoryResolver(Resolver):
 
 fac = factory = FactoryResolver
 fac_lazy = factory_lazy = FactoryResolverLazy = \
-    type('FactoryResolverLazy', (LazyResolverMixin, FactoryResolver), {})
+    type(str('FactoryResolverLazy'), (LazyResolverMixin, FactoryResolver), {})
 
 
 class AttributeResolver(Resolver):
@@ -978,7 +978,7 @@ class AttributeResolver(Resolver):
 
 attr = attribute = AttributeResolver
 attr_lazy = attribute_lazy = AttributeResolverLazy = \
-    type('AttributeResolverLazy', (LazyResolverMixin, AttributeResolver), {})
+    type(str('AttributeResolverLazy'), (LazyResolverMixin, AttributeResolver), {})
 
 
 # Register resolvers to use 'key:'-Shortcuts
