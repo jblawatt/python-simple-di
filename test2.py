@@ -10,6 +10,7 @@ import logging
 
 import di
 
+from uuid import uuid4
 from collections import OrderedDict
 
 try:
@@ -114,7 +115,7 @@ class TestConfigurationTestCase(TestCaseExtras, unittest.TestCase):
                 'lazy': {'type': 'mock.MagicMock'}
             })
 
-        self.assertEqual(patched_func.called,1)
+        self.assertEqual(patched_func.called, 1)
         self.assertTrue(patched_func.called_with_args(['none_lazy']))
 
     def test__register(self):
@@ -158,7 +159,6 @@ class TestConfigurationTestCase(TestCaseExtras, unittest.TestCase):
 
         inst = container.resolve("to_be_replaced")
         self.assertEqual(inst.id, '987654321')
-
 
     def test__register_decorator(self):
         """
@@ -217,6 +217,7 @@ class TestConfigurationTestCase(TestCaseExtras, unittest.TestCase):
 
         instance = container.resolve("instance", arg1='one', arg2=2)
         mock_type.assert_called_with(arg1='one', arg2=2)
+
 
 class EventDispatcherTestCase(unittest.TestCase):
 
@@ -300,7 +301,6 @@ class TypeCreationTestCase(unittest.TestCase):
             self.assertIsNotNone(instance)
             self.assertIsInstance(instance, TestClass)
             self.assertTrue(mocked_fn.called)
-
 
     def test__resolve_type(self):
         """
@@ -434,8 +434,10 @@ class TypeCreationTestCase(unittest.TestCase):
         mock_types.MixedCalledType.assert_called_with(*args, **kwargs)
 
     def test__extend_path(self):
-        tmp_file = tempfile.NamedTemporaryFile(mode='w+b', suffix='.py', delete=False)
-        tmp_file.write(bytes(b'# coding: utf-8\nclass DynamicDummy(object):\n  pass'))
+        tmp_file = tempfile.NamedTemporaryFile(
+            mode='w+b', suffix='.py', delete=False)
+        tmp_file.write(
+            bytes(b'# coding: utf-8\nclass DynamicDummy(object):\n  pass'))
         tmp_file.close()
         basename = os.path.basename(tmp_file.name)
         filename, ext = os.path.splitext(basename)
@@ -510,7 +512,8 @@ class TypeCreationTestCase(unittest.TestCase):
                     type='mock.MagicMock')
             }
         )
-        self.assertRaises(ImportError, lambda: container.resolve_lazy("instance"))
+        self.assertRaises(
+            ImportError, lambda: container.resolve_lazy("instance"))
 
     def test__resolve_many(self):
 
@@ -565,6 +568,7 @@ class TypeCreationTestCase(unittest.TestCase):
             self.assertFalse(resolve_type_mock.called)
             lazy_type()
             self.assertTrue(resolve_type_mock.called)
+
 
 class ResolverTestCase(unittest.TestCase):
 
@@ -718,7 +722,8 @@ class ResolverTestCase(unittest.TestCase):
 
         instance = container.resolve("alias_name")
         inject_rel = container.resolve("inject_rel")
-        test_instance_type.assert_called_with("arg1", arg2="arg2", arg3=inject_rel)
+        test_instance_type.assert_called_with(
+            "arg1", arg2="arg2", arg3=inject_rel)
         self.assertEqual(instance.prop1, 'prop1')
         self.assertEqual(instance.prop2, 'prop2')
         self.assertEqual(instance.prop3, inject_rel)
@@ -731,7 +736,8 @@ class InjectDecoratorTestCase(TestCaseExtras, unittest.TestCase):
         Passes if the instance with the key `service` becomes injected into
         a dummy function.
         """
-        container = DIContainer({'service': DIConfig(type=mock.Mock, singleton=True)})
+        container = DIContainer(
+            {'service': DIConfig(type=mock.Mock, singleton=True)})
 
         @container.inject(service='service')
         def some_function(data, service):
@@ -893,8 +899,10 @@ class ChildContainerTestCase(unittest.TestCase):
             self.assertIsNotNone(container.resolve("one"))
             self.assertIsNotNone(container.resolve_type("one"))
 
-        self.assertRaises(MissingConfigurationError, lambda: container.resolve("three"))
-        self.assertRaises(MissingConfigurationError, lambda: container.resolve_type("three"))
+        self.assertRaises(MissingConfigurationError,
+                          lambda: container.resolve("three"))
+        self.assertRaises(MissingConfigurationError,
+                          lambda: container.resolve_type("three"))
 
 
 class DIConfigManagerTestCase(unittest.TestCase):
@@ -1015,3 +1023,72 @@ class TestResolveByType(unittest.TestCase):
         instance = container.resolve(TestType)
         self.assertIsInstance(instance, TestType)
         self.assertIn(instance.value, (1, 2,))
+
+
+class TestLazyResolve(unittest.TestCase):
+
+    def test__lazy_resolver(self):
+
+        attr_value = uuid4().__str__()
+        factory_value = uuid4().__str__()
+
+        mock_module = mock.MagicMock()
+        mock_module.mock_instance = mock.MagicMock()
+        mock_module.mock_instance.mock_attribute = attr_value
+
+        mock_module.factory_method = lambda: factory_value
+
+        sys.modules['mock_module_lazy_resolve'] = mock_module
+
+        container = DIContainer({
+            'root': {
+                'type': dict,
+                'args': {
+                    'rel': di.RelationResolver('relation'),
+                    'rel_lazy': di.RelationResolverLazy('relation'),
+                    'ref': di.ReferenceResolver('sys.version'),
+                    'ref_lazy': di.ReferenceResolverLazy('sys.version'),
+                    'mod': di.ModuleResolver('sys'),
+                    'mod_lazy': di.ModuleResolverLazy('sys'),
+                    'attr': di.AttributeResolver('mock_module_lazy_resolve.mock_instance.mock_attribute'),
+                    'attr_lazy': di.AttributeResolverLazy('mock_module_lazy_resolve.mock_instance.mock_attribute'),
+                    'factory': di.FactoryResolver('mock_module_lazy_resolve.factory_method'),
+                    'factory_lazy': di.FactoryResolverLazy('mock_module_lazy_resolve.factory_method'),
+                }
+            },
+            'relation': {
+                'type': str,
+                'args': ['test-value']
+            }
+        })
+
+        root = container.resolve('root')
+        lazy_proxy = container.get_proxy_type()
+
+        self.assertEqual(root['rel'], 'test-value')
+        self.assertIsInstance(root['rel_lazy'], lazy_proxy)
+        self.assertEqual(root['rel_lazy'], 'test-value')
+
+        self.assertEqual(root['ref'], sys.version)
+        self.assertIsInstance(root['ref_lazy'], lazy_proxy)
+        self.assertEqual(root['ref_lazy'], sys.version)
+
+        self.assertEqual(root['mod'], sys)
+        self.assertIsInstance(root['mod_lazy'], lazy_proxy)
+        self.assertEqual(root['mod_lazy'], sys)
+
+        self.assertEqual(root['attr'], attr_value)
+        self.assertIsInstance(root['attr_lazy'], lazy_proxy)
+        self.assertEqual(root['attr_lazy'], attr_value)
+
+        self.assertEqual(root['factory'], factory_value)
+        self.assertIsInstance(root['factory_lazy'], lazy_proxy)
+        self.assertEqual(root['factory_lazy'], factory_value)
+
+
+class TestAllVar(unittest.TestCase):
+
+    def test__all(self):
+        for attr in di.__all__:
+            self.assertIsNotNone(getattr(di, attr, None))
+

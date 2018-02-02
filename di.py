@@ -14,7 +14,7 @@ from collections import namedtuple, OrderedDict
 from copy import copy
 
 __major__ = 1
-__minor__ = 7
+__minor__ = 8
 __bugfix__ = 0
 
 __version__ = '%s.%s.%s' % (__major__, __minor__, __bugfix__)
@@ -33,7 +33,11 @@ __all__ = (
     'DIEventDispatcher', 'DIContainer', 'attr', 'module', 'mod', 'factory',
     'RelationResolver', 'ReferenceResolver', 'ModuleResolver',
     'FactoryResolver', 'AttributeResolver', 'fac', 'relation', 'rel',
-    'reference', 'ref', 'DIConfig', 'DIConfigManager'
+    'reference', 'ref', 'DIConfig', 'DIConfigManager',
+    'ref_lazy', 'reference_lazy', 'ReferenceResolverLazy',
+    'mod_lazy', 'module_lazy', 'ModuleResolverLazy',
+    'rel_lazy', 'relation_lazy', 'RelationResolverLazy',
+    'factory_lazy', 'factory_lazy', 'FactoryResolverLazy',
 )
 
 py = sys.version_info
@@ -95,7 +99,8 @@ class Proxy(object):
 default_config = {
     'name': None,
     'type': None,
-    'args': [],
+    'args': (),
+    'kwargs': {},
     'singleton': False,
     'lazy': True,
     'properties': {},
@@ -110,10 +115,18 @@ class MissingConfigurationError(KeyError, AttributeError):
     """
     Exception that will be raised if the requested key is not configured.
     """
+
     def __init__(self, key):
         super(MissingConfigurationError, self).__init__(
             'No configuration named "%s". Please specify in '
             'settings or register at runtime.' % key)
+
+
+class DIConfigurationError(Exception):
+    """
+    Error that will be raised if there is an invalid configuration given
+    for the di container.
+    """
 
 
 class DIConfig(namedtuple('DIConfigBase', default_config.keys())):
@@ -145,7 +158,8 @@ class DIConfigManager(dict):
                 # create an instance of DIConfig for each config element.
                 # that makes it easier to work with it later.
                 settings[key] = DIConfig(name=key, **config)
-                _logger.debug('Created DIConfig for configuration key %s.', key)
+                _logger.debug(
+                    'Created DIConfig for configuration key %s.', key)
         super(DIConfigManager, self).__init__(settings)
 
     def apply_context(self, settings):
@@ -164,6 +178,8 @@ class DIContainer(object):
     """
     DIContainer is a little Dependency injection container implementation.
     """
+
+    __default_value_resolver_classes = {}
 
     def __init__(self, settings, *args, **kwargs):
         """
@@ -195,13 +211,10 @@ class DIContainer(object):
 
         # assign default resolvers. better use a resolver instance.
         # maybe remove this in some version.
-        self.value_resolvers = {
-            'mod': self._resolve_module_value,
-            'ref': self._resolve_reference_value,
-            'rel': self._resolve_relation_value,
-            'factory': self._resolve_factory_value,
-            'attr': self._resolve_attribute_value
-        }
+        self.value_resolvers = dict(
+            (key, k.as_resolve_method(self))
+            for key, k in self.__default_value_resolver_classes.items()
+        )
 
         # check if individual value_resolves are given. update the internal
         # resolver dictionary with this values.
@@ -226,12 +239,22 @@ class DIContainer(object):
 
         self.event_dispatcher.initialized()
 
+    @classmethod
+    def add_value_resolver(cls, resolver_class):
+        # type: (DIContainer, Resolver) -> None
+        # Add resolver classes from outside of the dicontainer.
+        # Once they where registered in the __init__.
+        key = resolver_class.key
+        cls.__default_value_resolver_classes[key] = \
+            resolver_class
+
     @staticmethod
     def import_module(name, package=None):
         """
         Internal method to wrap the import_module function.
         """
-        _logger.debug('calling import_module with name=%s, package=%s.', name, package)
+        _logger.debug(
+            'calling import_module with name=%s, package=%s.', name, package)
         from importlib import import_module
         return import_module(name, package)
 
@@ -258,7 +281,6 @@ class DIContainer(object):
         # and python_name
 
         _logger.debug('resolving type "%s."', python_name)
-
 
         def _import(type_path, type_name):
             mod = self.import_module(type_path)
@@ -303,47 +325,6 @@ class DIContainer(object):
 
         return type_
 
-
-    def _resolve_module_value(self, value_conf):
-        """
-        Resolves a module, given in the value_conf.
-        :param value_conf: str
-        :rtype: object
-        """
-        return ModuleResolver(value_conf).resolve(self)
-
-    def _resolve_relation_value(self, value_conf):
-        """
-        Resolve an object with the given name in this container.
-        :param value_conf: str
-        :rtype: object
-        """
-        return RelationResolver(value_conf).resolve(self)
-
-    def _resolve_reference_value(self, value_conf):
-        """
-        Resolves the given module and returns the given object off it.
-        :param value_conf: str
-        :rtype: object
-        """
-        return ReferenceResolver(value_conf).resolve(self)
-
-    def _resolve_factory_value(self, value_conf):
-        """
-        Resolves the factory method and returns the factories response.
-        :param value_conf:
-        :rtype: object
-        """
-        return FactoryResolver(value_conf).resolve(self)
-
-    def _resolve_attribute_value(self, value_conf):
-        """
-        Resolves an attribute of an instance.
-        :param value_conf:
-        :return: object
-        """
-        return AttributeResolver(value_conf).resolve(self)
-
     def _resolve_value(self, value_conf):
         """
         resolves a value from a string.
@@ -369,7 +350,7 @@ class DIContainer(object):
                     return resolver(value_conf)
         return value
 
-    def _resolve_args(self, conf):
+    def _resolve_args(self, conf_args, conf_kwargs):
         """
         resolves the arguments off the container configuration.
 
@@ -380,19 +361,37 @@ class DIContainer(object):
         """
         args = []
         kwargs = {}
-        if isinstance(conf, dict):
-            for key, value_conf in conf.items():
-                if key == '':
-                    if hasattr(value_conf, '__iter__'):
-                        for arg_conf in value_conf:
-                            args.append(self._resolve_value(arg_conf))
-                    else:
-                        args.append(self._resolve_value(value_conf))
-                else:
-                    kwargs[key] = self._resolve_value(value_conf)
-        elif hasattr(conf, '__iter__'):
-            for value_conf in conf:
-                args.append(self._resolve_value(value_conf))
+
+        # copy given references of dictionaries to not change
+        # references values.
+        conf_args = conf_args and copy(conf_args) or ()
+        conf_kwargs = conf_kwargs and copy(conf_kwargs) or {}
+
+        if isinstance(conf_args, dict) and conf_kwargs:
+            warnings.warn(
+                'Using "args" as dictionary is deprecated and will '
+                'be removed in DI > 2.0',
+                DeprecationWarning
+            )
+
+        # if there is still an empty key in args dictioanry
+        # we will keep this in args and move the rest to the kwargs
+        # dictionary. legacy reason :-(.
+        if isinstance(conf_args, dict):
+            conf_kwargs = dict(**conf_kwargs)
+            conf_kwargs.update({
+                (k, v) for k, v in conf_args.items() if k != ''
+            })
+            conf_args = conf_args.pop('', tuple())
+
+        # resolve items of kwargs values.
+        for key, value_conf in conf_kwargs.items():
+            kwargs[key] = self._resolve_value(value_conf)
+
+        # resolve items of args values.
+        for value_conf in conf_args:
+            args.append(self._resolve_value(value_conf))
+
         return args, kwargs
 
     def _check_type(self, conf_name, type_, expected):
@@ -415,7 +414,7 @@ class DIContainer(object):
                 % (type_, expected, conf_name)
             )
 
-    def _get_proxy_type(self):
+    def get_proxy_type(self):
         """
         Returns the Proxy type, used for lazy resolving.
 
@@ -424,7 +423,7 @@ class DIContainer(object):
         """
         try:
             proxy_type = self._resolve_type(self.proxy_type_name)
-        except ImportError as e:
+        except ImportError:
             # We do not provide lazy-object-proxy because of different licences.
             raise ImportError(
                 'got an error while importing the proxy type `%s`. '
@@ -457,11 +456,13 @@ class DIContainer(object):
         # check if this function is used as decorator. the indicator is,
         # calling the function with settings but without type even leave
         # settings empty.
-        is_decorator = (settings is None or (isinstance(settings, dict) and 'type' not in settings))
+        is_decorator = (settings is None or (isinstance(
+            settings, dict) and 'type' not in settings))
         if is_decorator:
             def wrapper(func_or_type):
                 # register the given type.
-                self.register(name, dict(settings or {}, type=func_or_type), replace)
+                self.register(name, dict(settings or {},
+                                         type=func_or_type), replace)
                 return func_or_type
             return wrapper
 
@@ -470,7 +471,8 @@ class DIContainer(object):
                 _logger.debug(
                     "name %s is already reagisterd. will be replaced.", name)
             else:
-                raise KeyError('there is already a configuration with this name.')
+                raise KeyError(
+                    'there is already a configuration with this name.')
 
         if isinstance(settings, dict):
             conf = DIConfig(name=name, **settings)
@@ -499,7 +501,7 @@ class DIContainer(object):
         # resolve the first configured instance with the given type.
         if not isinstance(name, string_types):
             for obj in self.resolve_many(
-                name, *instance_args, **instance_kwargs):
+                    name, *instance_args, **instance_kwargs):
                 return obj
             else:
                 raise MissingConfigurationError(str(name))
@@ -549,13 +551,14 @@ class DIContainer(object):
             _args, _kwargs = (instance_args, instance_kwargs)
         else:
             # resolve the arguments to pass into the constructor
-            _args, _kwargs = self._resolve_args(conf.args)
+            _args, _kwargs = self._resolve_args(conf.args, conf.kwargs)
 
         # create the instance
         if conf.factory_method:
             obj = getattr(type_, conf.factory_method)(*_args, **_kwargs)
         else:
             obj = type_(*_args, **_kwargs)
+
         obj = self.build_up(name, obj)
 
         # save instance to singleton container
@@ -584,7 +587,8 @@ class DIContainer(object):
         for name, conf in self.settings.items():
             instance_type = conf.type
             if isinstance(instance_type, string_types):
-                instance_type = self._resolve_type(instance_type, mixins=conf.mixins)
+                instance_type = self._resolve_type(
+                    instance_type, mixins=conf.mixins)
             if issubclass(instance_type, base_type):
                 yield self.resolve(name, *instance_args, **instance_kwargs)
 
@@ -600,7 +604,7 @@ class DIContainer(object):
             constructor kwargs.
         :type instance_kwargs: dict
         """
-        proxy_type = self._get_proxy_type()
+        proxy_type = self.get_proxy_type()
         return proxy_type(lambda: self.resolve_many(base_types, *instance_args, **instance_kwargs))
 
     def resolve_lazy(self, name, *instance_args, **instance_kwargs):
@@ -613,7 +617,7 @@ class DIContainer(object):
         :return: The proxy object to lazy access the instance.
         :rtype: di.Proxy
         """
-        proxy_type = self._get_proxy_type()
+        proxy_type = self.get_proxy_type()
         return proxy_type(lambda: self.resolve(name, *instance_args, **instance_kwargs))
 
     def resolve_type(self, name):
@@ -655,7 +659,7 @@ class DIContainer(object):
         :return: The proxy object to lazy access the type.
         :rtype: lazy_object_proxy.Proxy
         """
-        proxy_type = self._get_proxy_type()
+        proxy_type = self.get_proxy_type()
         return proxy_type(lambda: self.resolve_type(name))
 
     def build_up(self, name, instance, **overrides):
@@ -835,7 +839,7 @@ class Resolver(object):
         :param value_conf: argument configuration string.
         :type value_conf: str, unicode
         """
-        if value_conf.startswith(self.key):
+        if value_conf.startswith('{key}:'.format(key=self.key)):
             self.value_conf = value_conf[len(self.key) + 1:]
         else:
             self.value_conf = value_conf
@@ -847,6 +851,32 @@ class Resolver(object):
         :type container: di.DIContainer
         """
         raise NotImplementedError()
+
+    @classmethod
+    def as_resolve_method(cls, container):
+        def _inner(value_conf):
+            return cls(value_conf).resolve(container)
+        return _inner
+
+
+class LazyResolverMixin(object):
+    """
+    Resolver Mixin to let resolvers provide lazy object
+    for the requested value.
+    """
+
+    @property
+    def key(self):
+        return '{key}_lazy'.format(key=super(LazyResolverMixin, self).key)
+
+    def resolve(self, container):
+        @functools.wraps(super(LazyResolverMixin, self).resolve)
+        def _inner():
+            # wraps origin method to provide lazy resolution.
+            return super(LazyResolverMixin, self).resolve(container)
+
+        proxy_type = container.get_proxy_type()
+        return proxy_type(_inner)
 
 
 class ReferenceResolver(Resolver):
@@ -871,6 +901,8 @@ class ReferenceResolver(Resolver):
 
 
 reference = ref = ReferenceResolver
+reference_lazy = ref_lazy = ReferenceResolverLazy = \
+    type('ReferenceResolverLazy', (LazyResolverMixin, ReferenceResolver), {})
 
 
 class RelationResolver(Resolver):
@@ -887,6 +919,8 @@ class RelationResolver(Resolver):
 
 
 relation = rel = RelationResolver
+relation_lazy = rel_lazy = RelationResolverLazy = \
+    type('RelationResolverLazy', (LazyResolverMixin, RelationResolver), {})
 
 
 class ModuleResolver(Resolver):
@@ -903,6 +937,8 @@ class ModuleResolver(Resolver):
 
 
 module = mod = ModuleResolver
+module_lazy = mod_lazy = ModuleResolverLazy = \
+    type('ModuleResolverLazy', (LazyResolverMixin, ModuleResolver), {})
 
 
 class FactoryResolver(Resolver):
@@ -921,13 +957,15 @@ class FactoryResolver(Resolver):
 
 
 fac = factory = FactoryResolver
+fac_lazy = factory_lazy = FactoryResolverLazy = \
+    type('FactoryResolverLazy', (LazyResolverMixin, FactoryResolver), {})
 
 
 class AttributeResolver(Resolver):
 
     key = 'attr'
 
-    def resolve(self, container):
+    def resolve(self, container, lazy=False):
         """
         :type container: di.DIContainer
         :param container:
@@ -937,7 +975,23 @@ class AttributeResolver(Resolver):
         instance = ReferenceResolver(pre_conf).resolve(container)
         return getattr(instance, attr_name)
 
+
 attr = attribute = AttributeResolver
+attr_lazy = attribute_lazy = AttributeResolverLazy = \
+    type('AttributeResolverLazy', (LazyResolverMixin, AttributeResolver), {})
+
+
+# Register resolvers to use 'key:'-Shortcuts
+DIContainer.add_value_resolver(AttributeResolver)
+DIContainer.add_value_resolver(RelationResolver)
+DIContainer.add_value_resolver(ReferenceResolver)
+DIContainer.add_value_resolver(ModuleResolver)
+DIContainer.add_value_resolver(FactoryResolver)
+DIContainer.add_value_resolver(AttributeResolverLazy)
+DIContainer.add_value_resolver(RelationResolverLazy)
+DIContainer.add_value_resolver(ReferenceResolverLazy)
+DIContainer.add_value_resolver(ModuleResolverLazy)
+DIContainer.add_value_resolver(FactoryResolverLazy)
 
 
 _DEFAULT_CONTAINER = None
@@ -1002,8 +1056,10 @@ class InjectDecoratorBase(object):
 
         return inner_func
 
+
 class inject(InjectDecoratorBase):
     inject_method = "inject"
+
 
 class inject_many(InjectDecoratorBase):
     inject_method = "inject_many"

@@ -258,7 +258,8 @@ class DIContainerTestCase(unittest.TestCase):
         self.assertNotIn('bar', self.manager.singletons)
 
     def test_events(self):
-        manager = DIContainer(TEST_DI_SETTINGS, event_dispatcher=mock.MagicMock)
+        manager = DIContainer(
+            TEST_DI_SETTINGS, event_dispatcher=mock.MagicMock)
         for name in ('jens',):
             manager.resolve(name)
 
@@ -335,6 +336,7 @@ class DIContainerTestCase(unittest.TestCase):
 
         py_sys = container.resolve('python_sys')
         self.assertEqual(py_sys.version_info, sys.version_info)
+
 
 if __name__ == '__main__':
     unittest.main()
