@@ -13,6 +13,11 @@ Python Simple DI
 
 Changes
 -------
+1.8.0
+_____
+- Added LazyResolverMixin and created `ReferenceResolverLazy`, `RelationResolverLazy`, `ModuleResolverLazy`, `AttributeResolverLazy` and `FactoryResolverLazy` with it. The shortcuts for string configurations are `*_lazy`. 
+- Default resolver are no longer registered hardcoded. The become added with `add_value_resolver` classmethod.
+- `kwargs` was added as additional configuration option now. Args and KWargs can be splitted in this options now. Using an empty string key for mixing arguments and keyword arguments is deprecated now and will be removed in 2.0.
 
 1.7.0
 _____

@@ -1092,3 +1092,43 @@ class TestAllVar(unittest.TestCase):
         for attr in di.__all__:
             self.assertIsNotNone(getattr(di, attr, None))
 
+
+class TestArgsKwargsTestCase(unittest.TestCase):
+
+    def test__args(self):
+
+        mock_type = mock.MagicMock()
+
+        container = DIContainer({
+            'demo': {
+                'type': mock_type,
+                'args': ('one', 'two', 'three'),
+            }
+        })
+
+        self.assertFalse(mock_type.called)
+        container.resolve('demo')
+        mock_type.assert_called_with('one', 'two', 'three')
+
+    def test__kwargs(self):
+
+        mock_type = mock.MagicMock()
+        container = DIContainer({
+            'demo': {'type': mock_type, 'kwargs': dict(eins=1, zwei=2, drei=3)}
+        })
+        self.assertFalse(mock_type.called)
+        container.resolve('demo')
+        mock_type.assert_called_with(eins=1, zwei=2, drei=3)
+
+    def test__args_kwargs(self):
+        mock_type = mock.MagicMock()
+        container = DIContainer({
+            'demo': {
+                'type': mock_type,
+                'args': (1,),
+                'kwargs': dict(zwei=2, drei=3),
+            }
+        })
+        self.assertFalse(mock_type.called)
+        container.resolve('demo')
+        mock_type.assert_called_with(1, zwei=2, drei=3)
